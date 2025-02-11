@@ -1,22 +1,15 @@
-(ns auto-sim.simulation-engine
+(ns auto-sim.engine
   "Simulation is a technique that mimics a real system - and simplifies it, to learn something useful about it.
 Discrete event simulation is modeling a real system with discrete events.
 
 * Contains a user-specific domain, constraints, a customer-specific state and events modeling and an option to render visually the effects.
 * Customer simulation can use directly `DE Simulation` or a library that eases the modeling: `rc modeling`, `industry modeling`, … "
   (:require
-   [automaton-core.adapters.schema                            :as core-schema]
-   [auto-sim.simulation-engine.impl.model      :as sim-de-model]
-   [auto-sim.simulation-engine.impl.model-data :as sim-de-model-data]
-   [auto-sim.simulation-engine.impl.registry   :as sim-de-registry]
-   [auto-sim.simulation-engine.impl.scheduler  :as sim-de-scheduler]
-   [auto-sim.simulation-engine.response        :as sim-de-response]))
-
-(defn registries "Returns the `built-in` registries of simulation-de." [] (sim-de-registry/build))
-
-(defn validate-registry
-  [registry]
-  (core-schema/validate-data-humanize sim-de-registry/schema registry))
+   [auto-core.schema                :as core-schema]
+   [auto-sim.engine.impl.model      :as sim-de-model]
+   [auto-sim.engine.impl.model-data :as sim-de-model-data]
+   [auto-sim.engine.impl.scheduler  :as sim-de-scheduler]
+   [auto-sim.engine.response        :as sim-de-response]))
 
 (defn validate-model-data
   "Validate `model-data`."
@@ -26,8 +19,8 @@ Discrete event simulation is modeling a real system with discrete events.
 (defn build-model
   "Build the simulation model from `model-data` with `registry`.
   `registry` is optional and is defaulted to the `registries` fn."
-  ([model-data] (sim-de-model/build model-data (registries)))
-  ([model-data registry] (sim-de-model/build model-data registry)))
+  [model-data registry]
+  (sim-de-model/build model-data registry))
 
 (defn validate-model
   "Model - as built with `build-model` - are validated."

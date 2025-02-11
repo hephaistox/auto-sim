@@ -34,6 +34,8 @@
              ["-m" "cognitect.test-runner" "-r" ".*-test.*" "-d" "test/clj" "test/cljc"]}}
  :deps {babashka/fs #:mvn{:version "0.5.22"}
         babashka/process #:mvn{:version "0.5.22"}
+        com.github.hephaistox/auto-core {:git/sha "0c3949ca20c9b0610b3871cf559ac18a595e20bf"}
+        com.github.hephaistox/auto-opti {:local/root "../auto_opti"}
         com.taoensso/tempura #:mvn{:version "1.5.4"}
         com.yetanalytics/colossal-squuid {:mvn/version "0.1.5"}
         danlentz/clj-uuid #:mvn{:version "0.2.0"}

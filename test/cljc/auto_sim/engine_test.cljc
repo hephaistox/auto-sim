@@ -1,8 +1,8 @@
-(ns auto-sim.simulation-engine-test
+(ns auto-sim.engine-test
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [auto-sim.simulation-engine :as sut]))
+   [auto-sim.engine :as sut]))
 
 (def model-data-stub-1
   #::sut{:ordering [[::sut/field ::sut/date]]
