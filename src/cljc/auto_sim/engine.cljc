@@ -1,76 +1,137 @@
 (ns auto-sim.engine
-  "Simulation is a technique that mimics a real system - and simplifies it, to learn something useful about it.
-Discrete event simulation is modeling a real system with discrete events.
+  "The simulation engine is a `scheduler` working with a `model` describing the problem to solve.
 
-* Contains a user-specific domain, constraints, a customer-specific state and events modeling and an option to render visually the effects.
-* Customer simulation can use directly `DE Simulation` or a library that eases the modeling: `rc modeling`, `industry modeling`, … "
+  The `initial-snapshot` function creates the snapshot to start with.
+  Then, `continue` allows to execute this `model`. It is starting with a snapshot that can be coming from an `initial-snapshot` or another `continue` execution.
+
+  An event execution has three parameters `(event-execution current-event event-bucket state new-future-events)`:
+  * `current-event` which is the current event to execute
+  * `state` which is the state value before the event execution
+  * `new-future-events` which is the list of future events without the current event
+
+  The returned value is a map with `state` and `future-events` keys."
   (:require
-   [auto-core.schema                :as core-schema]
-   [auto-sim.engine.impl.model      :as sim-de-model]
-   [auto-sim.engine.impl.model-data :as sim-de-model-data]
-   [auto-sim.engine.impl.scheduler  :as sim-de-scheduler]
-   [auto-sim.engine.response        :as sim-de-response]))
+   [auto-sim.engine :as-alias sim-engine]))
 
-(defn validate-model-data
-  "Validate `model-data`."
-  [model-data]
-  (core-schema/validate-data-humanize sim-de-model-data/schema model-data))
+;; ********************************************************************************
+;; Helpers
+;; ********************************************************************************
 
-(defn build-model
-  "Build the simulation model from `model-data` with `registry`.
-  `registry` is optional and is defaulted to the `registries` fn."
-  [model-data registry]
-  (sim-de-model/build model-data registry))
+(defn- continue*
+  [model initial-snapshot]
+  (let [{::sim-engine/keys [event-registry sorter]} model]
+    (if-not (fn? sorter)
+      (-> initial-snapshot
+          (update ::sim-engine/stopping-criteria
+                  conj
+                  #::sim-engine{:stopping-criteria ::sim-engine/missing-sorter}))
+      (let [{::sim-engine/keys [bucket future-events id iteration state past-events]}
+            initial-snapshot]
+        (loop [current-bucket bucket
+               future-events (sorter future-events)
+               iteration-offset 0
+               state state
+               past-events past-events]
+          (if (empty? future-events)
+            #::sim-engine{:bucket current-bucket
+                          :future-events []
+                          :id (+ id iteration-offset)
+                          :iteration (+ iteration iteration-offset)
+                          :state state
+                          :past-events past-events
+                          :stopping-criteria [#::sim-engine{:stopping-criteria
+                                                            ::sim-engine/no-future-events}]}
+            (let [[current-event & rfuture-events] future-events
+                  {event-bucket ::sim-engine/bucket
+                   event-type ::sim-engine/type}
+                  current-event
+                  event-execution (get event-registry event-type)]
+              (cond
+                (not (fn? event-execution))
+                #::sim-engine{:bucket current-bucket
+                              :future-events rfuture-events
+                              :id (+ id iteration-offset)
+                              :iteration (+ iteration iteration-offset)
+                              :state state
+                              :past-events (conj past-events current-event)
+                              :stopping-criteria
+                              [#::sim-engine{:stopping-criteria ::sim-engine/execution-not-found
+                                             :possible-types (vec (keys event-registry))
+                                             :not-found-type (::sim-engine/type current-event)}]}
+                (< event-bucket current-bucket)
+                #::sim-engine{:bucket current-bucket
+                              :future-events rfuture-events
+                              :id (+ id iteration-offset)
+                              :iteration (+ iteration iteration-offset)
+                              :state state
+                              :past-events (conj past-events current-event)
+                              :stopping-criteria [#::sim-engine{:stopping-criteria
+                                                                ::sim-engine/causality-broken
+                                                                :current-bucket current-bucket
+                                                                :event-bucket event-bucket}]}
+                :else (let [iteration-offset (inc iteration-offset)
+                            event-return
+                            (try (event-execution current-event event-bucket state rfuture-events)
+                                 (catch #?(:clj Exception
+                                           :cljs :default)
+                                   e
+                                   #::sim-engine{:bucket event-bucket
+                                                 :future-events rfuture-events
+                                                 :id (+ id iteration-offset)
+                                                 :iteration (+ iteration iteration-offset)
+                                                 :state state
+                                                 :past-events (conj past-events current-event)
+                                                 :stopping-criteria
+                                                 [#::sim-engine{:stopping-criteria
+                                                                ::sim-engine/failed-event-execution
+                                                                :current-event current-event
+                                                                :exception e}]}))
+                            {::sim-engine/keys [future-events state stopping-criteria]}
+                            event-return]
+                        (if stopping-criteria
+                          event-return
+                          (recur event-bucket
+                                 (sorter future-events)
+                                 iteration-offset
+                                 state
+                                 (conj past-events current-event))))))))))))
 
-(defn validate-model
-  "Model - as built with `build-model` - are validated."
-  [model]
-  (core-schema/validate-data-humanize sim-de-model/schema model))
+;; ********************************************************************************
+;; API
+;; ********************************************************************************
 
-(defn validate-middleware-data
-  "Middleware data are validated."
-  [middleware-data _registries]
-  (core-schema/validate-data-humanize sim-de-model-data/middlewares-schema middleware-data))
+(defn initial-snapshot
+  "Returns the initial snapshot for a scheduler.
 
-(defn validate-stopping-criteria-data
-  [stopping-criteria-data _registries]
-  (core-schema/validate-data-humanize sim-de-model-data/stopping-criterias-schema
-                                      stopping-criteria-data))
+  It is initialiazed with `future-events` (will be turned into a vec to maintain proper order) and `state`.
 
-(defn scheduler
-  "Scheduler is running the simulation described in the `model`.
-   There are three arities for this function.
-   * First one specificies the `model` only.
-   * Second one adds `stopping-criteria` and supplementary middlewares (i.e. `supp-middelwares`).
-   * Third one specify also a different `snapshot` to start with (supersedes the `initial-snapshot` in the `model`).
+  Starts at `iteration` and `id` `1`, `bucket` 0, with no `past-events`."
+  [bucket state future-events]
+  #::sim-engine{:bucket bucket
+                :future-events (vec future-events)
+                :id 1
+                :iteration 1
+                :state (if (empty? state) {} state)
+                :past-events []})
 
-   Returns a `response` containing:
-   * simulation `snapshot` of the last event.
-   * `stopping-causes`, see [[auto-sim.impl.stopping-definition.registry]] for possible values."
-  ([{::keys [initial-snapshot]
-     :as model}]
-   (scheduler model [] [] initial-snapshot))
-  ([{::keys [initial-snapshot]
-     :as model}
-    scheduler-middlewares
-    scheduler-stopping-criterias]
-   (scheduler model scheduler-middlewares scheduler-stopping-criterias initial-snapshot))
-  ([model scheduler-middlewares scheduler-stopping-criterias snapshot]
-   (when-not (sim-de-scheduler/invalid-inputs model
-                                              scheduler-middlewares
-                                              scheduler-stopping-criterias
-                                              snapshot)
-     (sim-de-scheduler/scheduler model
-                                 scheduler-middlewares
-                                 scheduler-stopping-criterias
-                                 snapshot))))
+(defn continue
+  "Continue execution of model, starts with `snapshot`.
 
-(defn extract-snapshot
-  "Extract the `snapshot` of a `response`."
-  [{::keys [snapshot]
-    :as _response}]
-  snapshot)
+  The scheduler executes the `model` until a `stopping-criteria` is met.
 
-(defn validate-response
-  [response]
-  (core-schema/validate-data-humanize sim-de-response/schema response))
+  Model should contain:
+  * `#::sim-engine/sorter` the result of an execution of function `auto-sim.ordering/sorter`
+  * `#::sim-engine/event-registry` a map associating the `::sim-engine/type` to a function: `(f current-event state future-events)`
+
+  Note that users can enrich its execution by:
+  * enriching the `model` with augmented registries.
+  * supplementary middlewares and stopping criteria that don't affect the model
+
+  Note that particular attention has been paid to leverage model's preparation, e.g. stopping-criteria and middlewares aren't translated again, just their `scheduler` version is.
+
+  Returns a `response` with the last snapshot and the `stopping-criteria`."
+  [model initial-snapshot]
+  (-> (continue* model initial-snapshot)
+      (update ::sim-engine/future-events vec)
+      (update ::sim-engine/past-events vec)
+      (update ::sim-engine/stopping-criteria vec)))
