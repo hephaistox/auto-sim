@@ -42,8 +42,6 @@
   [current-event current-bucket state future-events]
   (let [{::sim-engine/keys [routings]} current-event
         [routing & rroutings] routings]
-    (println "azea" routing)
-    (println "(:p routing)" (:p routing))
     #::sim-engine{:state state
                   :future-events (cond-> future-events
                                    routing (conj #::sim-engine{:type :new-op
