@@ -25,29 +25,30 @@
 (def max-jobs 2)
 
 (defn new-job
-  [_current-event current-bucket state future-events]
-  (let [{:keys [n-jobs]} state
+  [event-return _ bucket]
+  (let [{::sim-engine/keys [state future-events]} event-return
+        {:keys [n-jobs]} state
         routing (rand-nth routings)]
     #::sim-engine{:state (-> state
                              (assoc :n-jobs (inc n-jobs)))
                   :future-events (cond-> future-events
-                                   (< n-jobs (dec max-jobs))
-                                   (conj #::sim-engine{:type :new-job
-                                                       :bucket (+ 100 current-bucket)})
+                                   (< n-jobs (dec max-jobs)) (conj #::sim-engine{:type :new-job
+                                                                                 :bucket
+                                                                                 (+ 100 bucket)})
                                    :else (conj #::sim-engine{:type :new-op
                                                              :routings routing
-                                                             :bucket current-bucket}))}))
+                                                             :bucket bucket}))}))
 
 (defn new-op
-  [current-event current-bucket state future-events]
-  (let [{::sim-engine/keys [routings]} current-event
+  [event-return event bucket]
+  (let [{::sim-engine/keys [routings]} event
         [routing & rroutings] routings]
-    #::sim-engine{:state state
-                  :future-events (cond-> future-events
-                                   routing (conj #::sim-engine{:type :new-op
-                                                               :routings (vec rroutings)
-                                                               :bucket (+ current-bucket
-                                                                          (:p routing))}))}))
+    (-> event-return
+        (update ::sim-engine/future-events
+                #(cond-> %
+                   routing (conj #::sim-engine{:type :new-op
+                                               :routings (vec rroutings)
+                                               :bucket (+ bucket (:p routing))}))))))
 
 (->> (sim-engine/initial-snapshot 0
                                   {:n-jobs 0}

@@ -71,7 +71,10 @@
                                                                 :event-bucket event-bucket}]}
                 :else (let [iteration-offset (inc iteration-offset)
                             event-return
-                            (try (event-execution current-event event-bucket state rfuture-events)
+                            (try (event-execution {::state state
+                                                   ::future-events rfuture-events}
+                                                  current-event
+                                                  event-bucket)
                                  (catch #?(:clj Exception
                                            :cljs :default)
                                    e
@@ -86,15 +89,26 @@
                                                                 ::sim-engine/failed-event-execution
                                                                 :current-event current-event
                                                                 :exception e}]}))
-                            {::sim-engine/keys [future-events state stopping-criteria]}
+                            {::sim-engine/keys [future-events state stopping-criteria errors]}
                             event-return]
-                        (if stopping-criteria
-                          event-return
-                          (recur event-bucket
-                                 (sorter future-events)
-                                 iteration-offset
-                                 state
-                                 (conj past-events current-event))))))))))))
+                        (cond
+                          stopping-criteria event-return
+                          errors #::sim-engine{:bucket event-bucket
+                                               :future-events future-events
+                                               :id (+ id iteration-offset)
+                                               :iteration (+ iteration iteration-offset)
+                                               :state state
+                                               :past-events (conj past-events current-event)
+                                               :stopping-criteria
+                                               [#::sim-engine{:stopping-criteria
+                                                              ::sim-engine/error-happen
+                                                              :current-event current-event
+                                                              :errors errors}]}
+                          :else (recur event-bucket
+                                       (sorter future-events)
+                                       iteration-offset
+                                       state
+                                       (conj past-events current-event))))))))))))
 
 ;; ********************************************************************************
 ;; API
@@ -129,7 +143,7 @@
 
   Note that particular attention has been paid to leverage model's preparation, e.g. stopping-criteria and middlewares aren't translated again, just their `scheduler` version is.
 
-  Returns a `response` with the last snapshot and the `stopping-criteria`."
+  Returns last snapshot and the `stopping-criteria`."
   [model initial-snapshot]
   (-> (continue* model initial-snapshot)
       (update ::sim-engine/future-events vec)

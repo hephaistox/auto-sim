@@ -7,99 +7,71 @@
    [auto-sim.demo-data     :as sim-demo-data]
    [auto-sim.engine        :as sim-engine]
    [auto-sim.entity        :as sim-entity]
-   [auto-sim.ordering      :as sim-ordering]))
+   [auto-sim.machine       :as sim-machine]
+   [auto-sim.ordering      :as sim-ordering]
+   [auto-sim.route         :as sim-route]))
+
+(defn clean-ns-kw
+  [m]
+  (-> m
+      (update-keys (comp keyword name))))
 
 (def model-data
-  #::sim-engine{:future-events [{::sim-engine/type :CE
-                                 ::sim-engine/bucket 0
-                                 ::waiting-time 2
-                                 ::max-nb-entity 4}]
+  #::sim-engine{:future-events [(sim-entity/n-entities-event 0 1 100 :CE)]
                 :routes {:blue [{:m :m4
+                                 :idx 0
                                  :tt 2
-                                 :pt (:m4 sim-demo-data/process-time)}
+                                 :pt 1}
                                 {:m :m2
+                                 :idx 1
                                  :tt 2
-                                 :pt (:m2 sim-demo-data/process-time)}
+                                 :pt 3}
                                 {:m :m1
-                                 :tt 0
-                                 :last? true
-                                 :pt (:m1 sim-demo-data/process-time)}]
+                                 :idx 2
+                                 :pt 1}]
                          :purple [{:m :m4
+                                   :idx 0
                                    :tt 2
-                                   :pt (:m4 sim-demo-data/process-time)}
+                                   :pt 1}
                                   {:m :m3
+                                   :idx 1
                                    :tt 2
-                                   :pt (:m3 sim-demo-data/process-time)}
+                                   :pt 3}
                                   {:m :m1
-                                   :last? true
-                                   :tt 0
-                                   :pt (:m1 sim-demo-data/process-time)}]}
+                                   :tt 1
+                                   :idx 2
+                                   :pt 1}]}
                 ::seed #uuid "e85427c1-ed25-4ed4-9b11-52238d268265"})
-
-(def colors [:blue :purple])
-
-(defn color-distribution
-  [prng]
-  (opt-distribution/distribution {:prng prng
-                                  :params {:a 0
-                                           :b (count colors)}
-                                  :dst-name :uniform-int}))
 
 (defn event-types
   [model-data prng]
-  (let [#::sim-engine{:keys [routes]} model-data]
-    {:CE (fn [event bucket state future-events]
-           (let [product-id (sim-entity/create-id)
-                 {::keys [nb-entity max-nb-entity waiting-time]
-                  :or {nb-entity 0}}
-                 event
-                 entity-color (->> (opt-distribution/draw (color-distribution prng))
-                                   (nth colors))
-                 route (get routes entity-color)
-                 state (-> state
-                           (sim-entity/create bucket
-                                              :product-name
-                                              product-id
-                                              {::color entity-color
-                                               ::route route}))]
-             #::sim-engine{:state state
-                           :future-events (cond-> (conj future-events
-                                                        {::sim-engine/type :MA
-                                                         ::sim-entity/entity-id product-id
-                                                         ::sim-engine/bucket bucket})
-                                            (< nb-entity max-nb-entity)
-                                            (conj (assoc event
-                                                         ::sim-engine/bucket (+ bucket waiting-time)
-                                                         ::nb-entity (inc nb-entity))))}))
-     :MA (fn [event bucket state future-events]
-           (let [[first-operation rroute] (->> (sim-entity/state state event)
-                                               ::route
-                                               ((juxt peek pop)))
-                 state (sim-entity/update state bucket event (comp pop ::sim-entity/route))]
-             #::sim-engine{:state state
-                           :future-events (conj future-events
-                                                {::sim-engine/type :MP
-                                                 ::first-operation first-operation
-                                                 ::rroute rroute
-                                                 ::sim-engine/bucket bucket})}))
-     :MP (fn [event bucket state future-events]
-           (let [{::keys [first-operation]} event
-                 {:keys [pt]} first-operation]
-             #::sim-engine{:state state
-                           :future-events (conj future-events
-                                                (assoc event
-                                                       ::sim-engine/type :MT
-                                                       ::sim-engine/bucket (+ bucket pt)))}))
-     :MT (fn [{::keys [first-operation]} bucket state future-events]
-           (let [{:keys [tt last?]} first-operation]
-             #::sim-engine{:state state
-                           :future-events (cond-> future-events
-                                            (not last?) (conj {::sim-engine/type :MA
-                                                               ::sim-engine/bucket (+ bucket
-                                                                                      tt)}))}))
-     :PT (fn [event bucket state future-events]
-           #::sim-engine{:state (sim-entity/dispose state bucket event)
-                         :future-events future-events})}))
+  (let [#::sim-engine{:keys [routes]} model-data
+        colors (-> routes
+                   keys
+                   vec)
+        color-distribution (opt-distribution/distribution {:prng prng
+                                                           :params {:a 0
+                                                                    :b (count colors)}
+                                                           :dst-name :uniform-int})]
+    {:CE (fn [event-return event bucket]
+           (let [product-data (->> (opt-distribution/draw color-distribution)
+                                   (nth colors)
+                                   (sim-route/entity-data routes))]
+             (-> event-return
+                 (sim-entity/schedule-entity-every event bucket :product product-data)
+                 (sim-entity/schedule #::sim-engine{:type :MA} bucket nil))))
+     :MA (fn [event-return event bucket]
+           (sim-route/pop event-return event bucket #::sim-engine{:type :MP}))
+     :MP (fn [event-return event bucket]
+           (sim-machine/infinite-capacity event-return event bucket #::sim-engine{:type :MT} :pt))
+     :MT
+     (fn [event-return event bucket]
+       (let [{::sim-engine/keys [route]} (sim-entity/state (::sim-engine/state event-return) event)]
+         (if (empty? route)
+           (sim-entity/schedule-same-entity event-return event bucket #::sim-engine{:type :PT})
+           ;;TODO J'en suis là. Faut que je mette
+           (sim-machine/infinite-capacity event-return event bucket #::sim-engine{:type :MA} :tt))))
+     :PT sim-entity/sink}))
 
 (def order
   (sim-ordering/sorter (sim-ordering/fields ::sim-engine/bucket)
@@ -114,3 +86,11 @@
                              :event-registry
                              (event-types model-data (opt-prng/xoroshiro128 (::seed model-data)))})
               ((juxt ::sim-engine/bucket ::sim-engine/iteration))))))
+
+(-> (->> (sim-engine/initial-snapshot 0 {} (::sim-engine/future-events model-data))
+         (sim-engine/continue #::sim-engine{:sorter order
+                                            :event-registry (event-types model-data
+                                                                         (opt-prng/xoroshiro128
+                                                                          (::seed model-data)))}))
+    (update ::sim-engine/past-events (partial mapv clean-ns-kw))
+    (update ::sim-engine/state clean-ns-kw))

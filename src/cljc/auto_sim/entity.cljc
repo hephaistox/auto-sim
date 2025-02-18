@@ -13,29 +13,33 @@
   An error is documented if the entity is created already."
   [state bucket entity-name entity-id entity-data]
   (-> state
-      (update-in [::entity entity-id]
+      (update-in [::sim-engine/entity entity-id]
                  (fn [entity]
-                   (if (some? (::created entity))
+                   (if (some? (::sim-engine/created entity))
                      (clojure.core/update entity
-                                          ::errors
+                                          ::sim-engine/errors
                                           (fnil conj [])
-                                          #::{:why ::already-created
-                                              :entity-id entity-id
-                                              :entity-name entity-name
-                                              :entity-state entity-data
-                                              :bucket bucket})
-                     {::created bucket
-                      ::living bucket
-                      ::entity-state entity-data})))))
+                                          #::sim-engine{:why ::sim-engine/already-created
+                                                        :entity-id entity-id
+                                                        :entity-name entity-name
+                                                        :entity-state entity-data
+                                                        :bucket bucket})
+                     #::sim-engine{:created bucket
+                                   :living bucket
+                                   :entity-state entity-data})))))
 
-(defn assign-event "Assign `event`" [entity-id event] (assoc event ::entity-id entity-id))
+(defn assign-event
+  "Assign `event`"
+  [entity-id event]
+  (assoc event ::sim-engine/entity-id entity-id))
 
 (defn errors
   "Returns a map associating all `entity` with an error to the list of errors."
-  [{::keys [entity]
+  [{::sim-engine/keys [entity]
     :as _state}]
   (->> entity
-       (mapv (fn [[entity-id entity]] (when-let [errors (get entity ::errors)] [entity-id errors])))
+       (mapv (fn [[entity-id entity]]
+               (when-let [errors (get entity ::sim-engine/errors)] [entity-id errors])))
        (filter (comp not empty? second))
        (into {})))
 
@@ -43,125 +47,213 @@
   "Returns `nil` if entity `entity-id` has no error,
   Or a sequence of errors"
   [state
-   {::keys [entity-id]
+   {::sim-engine/keys [entity-id]
     :as _event}]
-  (get-in state [::entity entity-id ::errors]))
+  (get-in state [::sim-engine/entity entity-id ::sim-engine/errors]))
 
 (defn update
   "Returns `state` updated with `f` applied to entity `entity-id`.
   `f` is applied with `(apply f entity-state args)`
   `bucket` is used to tag when errors occur and mark when the last updated has been done"
   [state bucket event f & args]
-  (let [{::keys [entity-id]} event]
+  (let [{::sim-engine/keys [entity-id]} event]
     (try
       (update-in
        state
-       [::entity entity-id]
+       [::sim-engine/entity entity-id]
        (fn [old-entity]
-         (let [updated-entity (-> old-entity
-                                  (assoc ::living bucket)
-                                  (clojure.core/update ::entity-state (partial apply f) args))]
+         (let [updated-entity
+               (-> old-entity
+                   (assoc ::sim-engine/living bucket)
+                   (clojure.core/update ::sim-engine/entity-state (partial apply f) args))]
            (cond
-             (::disposed old-entity) (clojure.core/update updated-entity
-                                                          ::errors
-                                                          (fnil conj [])
-                                                          #::{:args args
-                                                              :bucket bucket
-                                                              :entity-id entity-id
-                                                              :function f
-                                                              :old-entity old-entity
-                                                              :why ::updating-a-disposed-entity})
-             (not (::created old-entity)) (-> updated-entity
-                                              (assoc ::created bucket)
-                                              (clojure.core/update
-                                               ::errors
-                                               (fnil conj [])
-                                               #::{:args args
-                                                   :bucket bucket
-                                                   :entity-id entity-id
-                                                   :function f
-                                                   :old-entity old-entity
-                                                   :why ::updating-a-not-created-entity}))
+             (::sim-engine/disposed old-entity)
+             (clojure.core/update updated-entity
+                                  ::sim-engine/errors
+                                  (fnil conj [])
+                                  #::sim-engine{:args args
+                                                :bucket bucket
+                                                :entity-id entity-id
+                                                :function f
+                                                :old-entity old-entity
+                                                :why ::sim-engine/updating-a-disposed-entity})
+             (not (::sim-engine/created old-entity))
+             (-> updated-entity
+                 (assoc ::sim-engine/created bucket)
+                 (clojure.core/update ::sim-engine/errors
+                                      (fnil conj [])
+                                      #::sim-engine{:args args
+                                                    :bucket bucket
+                                                    :entity-id entity-id
+                                                    :function f
+                                                    :old-entity old-entity
+                                                    :why
+                                                    ::sim-engine/updating-a-not-created-entity}))
              :else updated-entity))))
       (catch #?(:clj Exception
                 :cljs :default)
         e
         (-> state
-            (update-in [::entity entity-id ::errors]
+            (update-in [::sim-engine/entity entity-id ::sim-engine/errors]
                        (fnil conj [])
-                       #::{:args args
-                           :bucket bucket
-                           :entity-id entity-id
-                           :exception e
-                           :function f
-                           :old-entity (get-in state [::entity entity-id])
-                           :why ::exception-during-update}))))))
+                       #::sim-engine{:args args
+                                     :bucket bucket
+                                     :entity-id entity-id
+                                     :exception e
+                                     :function f
+                                     :old-entity (get-in state [::sim-engine/entity entity-id])
+                                     :why ::sim-engine/exception-during-update}))))))
 
 (defn state
   "Returns the `state` value of the entity called `entity-id`."
   [state
-   {::keys [entity-id]
+   {::sim-engine/keys [entity-id]
     :as _event}]
-  (get-in state [::entity entity-id ::entity-state]))
+  (get-in state [::sim-engine/entity entity-id ::sim-engine/entity-state]))
 
-(defn dispose
-  "Disposing an entity by its `entity-id` is removing its data, its lifecycle will mark `::disposed` at the current `bucket`."
-  [state bucket event]
-  (let [{::keys [entity-id]} event]
+(defn- dispose*
+  [state bucket event dissoc-state?]
+  (let [{::sim-engine/keys [entity-id]} event]
     (-> state
-        (update-in [::entity entity-id]
+        (update-in [::sim-engine/entity entity-id]
                    (fn [old-entity]
-                     (let [updated-entity (-> old-entity
-                                              (assoc ::disposed bucket)
-                                              (dissoc ::entity-state))]
+                     (let [updated-entity (cond-> old-entity
+                                            true (assoc ::sim-engine/disposed bucket)
+                                            dissoc-state? (dissoc ::sim-engine/entity-state))]
                        (cond
-                         (nil? (::created old-entity))
+                         (nil? (::sim-engine/created old-entity))
                          (-> updated-entity
-                             (assoc ::created bucket)
-                             (assoc ::living bucket)
-                             (clojure.core/update ::errors
+                             (assoc ::sim-engine/created bucket)
+                             (assoc ::sim-engine/living bucket)
+                             (clojure.core/update
+                              ::sim-engine/errors
+                              conj
+                              #::sim-engine{:bucket bucket
+                                            :entity-id entity-id
+                                            :old-entity old-entity
+                                            :why ::sim-engine/disposing-a-not-created-entity}))
+                         (some? (::sim-engine/disposed old-entity))
+                         (-> updated-entity
+                             ;;TODO Move to event-return
+                             (clojure.core/update ::sim-engine/errors
                                                   conj
-                                                  #::{:bucket bucket
-                                                      :entity-id entity-id
-                                                      :old-entity old-entity
-                                                      :why ::disposing-a-not-created-entity}))
-                         (some? (::disposed old-entity)) (-> updated-entity
-                                                             (clojure.core/update
-                                                              ::errors
-                                                              conj
-                                                              #::{:bucket bucket
-                                                                  :entity-id entity-id
-                                                                  :old-entity old-entity
-                                                                  :why ::already-disposed}))
+                                                  #::sim-engine{:bucket bucket
+                                                                :entity-id entity-id
+                                                                :old-entity old-entity
+                                                                :why
+                                                                ::sim-engine/already-disposed}))
                          :else updated-entity)))))))
 
+(defn dispose
+  "Disposing an entity by its `entity-id` is removing its data, its lifecycle will mark `::sim-engine/disposed` at the current `bucket`."
+  [state bucket event]
+  (dispose* state bucket event true))
+
+(defn dispose-with-history
+  "Disposing an entity by its `entity-id` is removing its data, its lifecycle will mark `::sim-engine/disposed` at the current `bucket`."
+  [state bucket event]
+  (dispose* state bucket event false))
+
 (defn lifecycle-status
-  "The lifecycle has three possible fields `::created`, `::living` or `:disposed` depending on the position of the entity in its lifecycle."
+  "The lifecycle has three possible fields `::sim-engine/created`, `::sim-engine/living` or `::sim-engine/disposed` depending on the position of the entity in its lifecycle."
   [state
-   {::keys [entity-id]
+   {::sim-engine/keys [entity-id]
     :as _event}]
   (-> state
-      (get-in [::entity entity-id])
-      (select-keys [::created ::living ::disposed])))
+      (get-in [::sim-engine/entity entity-id])
+      (select-keys [::sim-engine/created ::sim-engine/living ::sim-engine/disposed])))
 
 (defn is-created?
   "Is the entity called `:entity-id` living?"
   [state
-   {::keys [entity-id]
+   {::sim-engine/keys [entity-id]
     :as _event}]
-  (let [{::keys [created]} (get-in state [::entity entity-id])] created))
+  (let [{::sim-engine/keys [created]} (get-in state [::sim-engine/entity entity-id])] created))
 
 (defn is-living?
   "Is the entity called `:entity-id` living?"
   [state
-   {::keys [entity-id]
+   {::sim-engine/keys [entity-id]
     :as _event}]
-  (let [{::keys [living disposed]} (get-in state [::entity entity-id])]
+  (let [{::sim-engine/keys [living disposed]} (get-in state [::sim-engine/entity entity-id])]
     (when (and living (not disposed)) living)))
 
 (defn is-disposed?
   "Is the entity called `:entity-id` disposed?"
   [state
-   {::keys [entity-id]
+   {::sim-engine/keys [entity-id]
     :as _event}]
-  (let [{::keys [disposed]} (get-in state [::entity entity-id])] disposed))
+  (let [{::sim-engine/keys [disposed]} (get-in state [::sim-engine/entity entity-id])] disposed))
+
+(defn n-entities-event
+  "Event to create `n` entities separated with `waiting-time` buckets"
+  [bucket n waiting-time type]
+  {::sim-engine/type type
+   ::sim-engine/bucket bucket
+   ::waiting-time waiting-time
+   ::nb-entity 0
+   ::max-nb-entity n})
+
+(defn schedule-entity-every
+  "Schedule an entity creation every `waiting-time` buckets.
+
+  The event is created only `max-nb-entity` times
+
+  Returns an event-return with:
+  * `::sim-engine/state` with a new entity created named `entity-name`
+  * `::sim-engine/future-events` with events to create next entities in `waiting-time` buckets"
+  [event-return event bucket entity-name entity-data]
+  (let [{::sim-engine/keys [state future-events]} event-return
+        entity-id (create-id)
+        {::keys [nb-entity max-nb-entity waiting-time]} event
+        nb-entity (inc nb-entity)]
+    (assoc event-return
+           ::sim-engine/entity-id entity-id
+           ::sim-engine/state (create state bucket entity-name entity-id entity-data)
+           ::sim-engine/future-events (cond-> future-events
+                                        (< nb-entity max-nb-entity)
+                                        (conj (assoc event
+                                                     ::sim-engine/bucket (+ bucket waiting-time)
+                                                     ::nb-entity nb-entity))))))
+
+(defn schedule
+  "Schedules the execution of `new-event` at `bucket` for the same entity than the entity created
+
+  The `entity-id` used is coming from the parameter. If `nil`, the one assigned by the last `schedule-entity-every` will be used.
+
+  If none exist, an error is raised.
+
+  Returns `event-return` with `future-events` updated."
+  [event-return new-event bucket entity-id]
+  (let [er-event-id (::sim-engine/entity-id event-return)]
+    (if (and (nil? er-event-id) (nil? entity-id))
+      (update event-return
+              ::sim-engine/errors
+              conj
+              #::sim-engine{:why :no-entity-id-to-pick
+                            :entity-id entity-id
+                            :event-return event-return})
+      (let [entity-id (or entity-id er-event-id)
+            scheduled-event (-> new-event
+                                (assoc ::sim-engine/entity-id entity-id
+                                       ::sim-engine/bucket bucket))]
+        (-> event-return
+            (clojure.core/update ::sim-engine/future-events (fnil conj []) scheduled-event))))))
+
+(defn schedule-same-entity
+  "Schedules the execution of `new-event` at `bucket` for the same entity than the entity created
+
+  The `entity-id` used is coming from the parameter. If `nil`, the one assigned by the last `schedule-entity-every` will be used.
+
+  If none exist, an error is raised.
+
+  Returns `event-return` with `future-events` updated."
+  [event-return event bucket next-event]
+  (->> (::sim-engine/entity-id event)
+       (schedule event-return next-event bucket)))
+
+(defn sink
+  "End of life of an entity"
+  [event-return event bucket]
+  (-> event-return
+      (update ::sim-engine/state dispose* bucket event false)))

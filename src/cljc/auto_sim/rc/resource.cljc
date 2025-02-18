@@ -1,93 +1,125 @@
 (ns auto-sim.rc.resource
-  "A resource is a limited quantity of items that are used by entities as they proceed through the system. A resource has a capacity that governs the total quantity of items that may be available. All the items in the resource are homogeneous, meaning that they are indistinguishable. If an entity attempts to seize a resource that does not have any units available it must wait in a queue.
-  It is often representing real world items that availability is limited (e.g. machine, wrench, ...).
-
-  A resource knows its instantenous capacity and the element waiting for its availablility in the queue. The properties of a resource are:
-  * `capacity` (default 1) total number of available resources, note that this number may evolve over time.
-  * `currently-consuming` (default []) list of events currently consuming this resource, is useful to track them and enabling preemption and failures. The event contains the information on the waiting entity.
-  * `queue` (default []) list of blocked entities.
-  * `renewable?` (default true) when true, the disposing is not giving back the values."
+  "This namespace is assembling the consumption and queue logics."
   (:require
-   [auto-sim.rc             :as-alias sim-rc]
-   [auto-sim.rc.consumption :as sim-rc-consumption]
-   [auto-sim.rc.queue       :as sim-rc-queue]))
+   [auto-sim.engine                  :as-alias sim-engine]
+   [auto-sim.rc.resource.consumption :as sim-rc-consumption]
+   [auto-sim.rc.resource.queue       :as sim-rc-queue]))
 
 (defn defaulting-values
   "Returns a resource with default values added."
-  [{::sim-rc/keys [capacity currently-consuming queue renewable?]
+  [{::sim-engine/keys [capacity consumption queue renewable?]
     :as resource
     :or {capacity 1
-         currently-consuming {}
+         consumption {}
          queue []
          renewable? true}}]
   (assoc resource
-         ::sim-rc/capacity capacity
-         ::sim-rc/currently-consuming currently-consuming
-         ::sim-rc/queue queue
-         ::sim-rc/renewable? renewable?))
+         ::sim-engine/capacity capacity
+         ::sim-engine/consumption consumption
+         ::sim-engine/queue queue
+         ::sim-engine/renewable? renewable?))
 
 (defn nb-consumed-resources
   "Returns the number of consumed resources."
-  [{:keys [::sim-rc/currently-consuming]
+  [{::sim-engine/keys [consumption]
     :as _resource}]
-  (if (map? currently-consuming)
-    (->> currently-consuming
+  (if (map? consumption)
+    (->> consumption
          vals
-         (map (fn [{::sim-rc/keys [consumed-quantity]
-                    :or {consumed-quantity 1}}]
-                consumed-quantity))
+         (map (fn [{::sim-engine/keys [consumption-quantity]
+                    :or {consumption-quantity 1}}]
+                consumption-quantity))
          (apply + 0))
     0))
 
 (defn nb-available-resources
-  "Returns the number of available resources based on the defined `capacity,` and the `currently-consuming` resources (i.e. sum of their )."
-  [{::sim-rc/keys [capacity]
+  "Returns the number of available resources based on the defined `capacity,` and the `consumption` resources (i.e. sum of their )."
+  [{::sim-engine/keys [capacity]
     :or {capacity 1}
     :as resource}]
   (max 0 (- (or capacity 0) (nb-consumed-resources resource))))
 
 (defn seize
-  "If a `resource` contains enough available resources, a consumption is created and stored in the `resource`.
-  Otherwise, no consumption is created and the resource is queueing `event` to test the seizing later on.
+  "If a `resource` contains enough available items, a `consumption` is created and stored in the `resource`.
+  Otherwise, no `consumption` is created and the `event` is queued in the `resource`, to test the seizing later on.
 
-  In any case, it returns a pair of:
+  In any case, it returns a map with:
   * `consumption-uuid` or `nil` if the execution is postponed awaiting for a resource disposal
-  *  updated `resource` reflecting the consumption"
-  [resource consumed-quantity event]
-  (if (>= (compare (nb-available-resources resource) consumed-quantity) 0)
-    (sim-rc-consumption/consume resource consumed-quantity event)
-    [nil (sim-rc-queue/queue-event resource consumed-quantity event)]))
+  *  updated `resource` reflecting the consumption
+  * `errors`"
+  [resource event consumption-quantity priority]
+  (if (>= (compare (nb-available-resources resource) consumption-quantity) 0)
+    (sim-rc-consumption/consume resource event consumption-quantity priority)
+    (sim-rc-queue/queue-event resource event consumption-quantity priority)))
 
-(defn dispose
-  "Removes in the `resource` the `consumption-uuid`.
-  The released quantity of resource may generate some `unblockings`
+(defn new-available-items
+  "Try to unqueue events regarding the newly available items.
 
-  Returns a pair with:
-  * `unblockings` list of blockings that should be try to seize again the resource
-  * `resource` updated with consumption `consumption-uuid` removed.
+  Returns a map with:
+  * `resource` updated
+  * `events` list of event to add in the `future-events` to try their execution again."
+  [resource unqueueing-policy-fn]
+  (let [available-capacity (nb-available-resources resource)
+        {:keys [resource unqueued]}
+        (sim-rc-queue/unqueue-event resource available-capacity unqueueing-policy-fn)]
+    {:resource resource
+     :events unqueued}))
 
-  `unblocking-policy-fn` is used to determine in which order events should be released."
-  [resource consumption-uuid unblocking-policy-fn]
-  (let [resource (sim-rc-consumption/free resource consumption-uuid)]
-    (sim-rc-queue/unqueue-event resource (nb-available-resources resource) unblocking-policy-fn)))
+(defn dispose-consumption-uuid
+  "Removes a specific `consumption-uuid` in the `resource`.
+
+  `unqueueing-policy-fn` is used to determine in which order events should be released.
+
+  Returns a map with:
+  * `events` list of events to add in the `future-events` again.
+  * `resource` updated with consumption `consumption-uuid` removed."
+  [resource unqueueing-policy-fn consumption-uuid]
+  (let [{:keys [resource errors]} (sim-rc-consumption/free resource consumption-uuid)]
+    (if errors
+      {:resource resource
+       :errors errors}
+      (new-available-items resource unqueueing-policy-fn))))
 
 (defn update-capacity
-  "Returns a pair of:
-  * `unblocked-events` list of events that should be try to seize again the
+  "Returns a map with
+  * `unqueued` list of events that should be seized again
   * `resource` updated with the resource capacity
+  * `preempts` the list of event to stop execution of
 
-  If the new capacity is lower than the number of element consumed (i.e. in `currently-consuming`), then the `preemption-policy` choose one event to stop:
+  If the new capacity is lower than the number of element consumed (i.e. in `consumption`), then the `preemption-policy` choose one event to stop:
   * `::no-premption` is the only implemented, it doesn't do anything and let the currently executing event finish."
-  [{::sim-rc/keys [capacity]
+  [{::sim-engine/keys [capacity]
     :or {capacity 1}
     :as resource}
-   new-capacity
    preemption-policy-fn
-   unblocking-policy-fn]
-  (let [resource (assoc resource ::sim-rc/capacity new-capacity)]
+   unqueueing-policy-fn
+   new-capacity]
+  (let [resource (assoc resource ::sim-engine/capacity new-capacity)]
     (if (< new-capacity capacity)
+      ;;NOTE Capacity decrease
       (preemption-policy-fn resource)
-      ;; Capacity increase
-      (sim-rc-queue/unqueue-event resource
-                                  (nb-available-resources resource)
-                                  unblocking-policy-fn))))
+      ;;NOTE Capacity increase
+      (new-available-items resource unqueueing-policy-fn))))
+
+(defn dispose
+  "Dispose `quantity` items of `resource` that has been seized by entity `entity-id`.
+
+  `unqueueing-policy-fn` is used to determine in which order events should be released.
+
+  Returns a map with:
+  * `unqueued` list of events that should be try to seize again the resource.
+  * `resource` updated with consumptions removed."
+  [resource entity-id unqueueing-policy-fn priority-comp quantity]
+  (let [consumptions (sim-rc-consumption/consumption-by-priority resource entity-id priority-comp)]
+    (loop [consumptions consumptions
+           quantity-to-dispose quantity
+           resource resource
+           all-errors []]
+      (let [[[[consumption-uuid consumption]] & rconsumptions] consumptions
+            {:keys [consumption-quantity]} consumption
+            new-quantity-to-dispose (- quantity-to-dispose consumption-quantity)
+            {:keys [resource errors]} (sim-rc-consumption/free resource consumption-uuid)]
+        (if (pos? new-quantity-to-dispose)
+          (recur rconsumptions new-quantity-to-dispose resource (reduce conj all-errors errors))
+          (cond-> (new-available-items resource unqueueing-policy-fn)
+            all-errors (assoc :errors all-errors)))))))
