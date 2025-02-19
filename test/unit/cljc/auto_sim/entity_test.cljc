@@ -81,7 +81,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
                                                            :living 4
                                                            :entity-state {:data :of
                                                                           :an :entity}}}}
-          (sut/update 5 {::sim-engine/entity-id :foo-entity} assoc :and :another-data)))
+          (sut/update {::sim-engine/entity-id :foo-entity} 5 assoc :and :another-data)))
    "When an existing entity that is living is updated, its entity state and living lifecycle are updated, the created is not modified.")
   (is
    (= #::sim-engine{:entity {:foo-entity
@@ -103,7 +103,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
                                                            :living 4
                                                            :entity-state {:data :of
                                                                           :an :entity}}}}
-          (sut/update 5 {::sim-engine/entity-id :foo-entity} #(throw (ex-info "Hey no!" {:a %})))
+          (sut/update {::sim-engine/entity-id :foo-entity} 5 #(throw (ex-info "Hey no!" {:a %})))
           (update-in [::sim-engine/entity :foo-entity ::sim-engine/errors 0]
                      dissoc
                      ::sim-engine/exception
@@ -135,7 +135,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
                                                            :entity-state {:data :of
                                                                           :an :entity}
                                                            :disposed 5}}}
-          (sut/update 12 {::sim-engine/entity-id :foo-entity} assoc :bar :foo)))
+          (sut/update {::sim-engine/entity-id :foo-entity} 12 assoc :bar :foo)))
    "The update function documents an error if the entity is already disposed, the creation is marked in the lifecycle status.")
   (is (= [#::sim-engine{:why ::sim-engine/updating-a-not-created-entity
                         :entity-id :foo-entity
@@ -144,7 +144,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
                         :function assoc
                         :args [:bar :foo]}]
          (-> {}
-             (sut/update 12 {::sim-engine/entity-id :foo-entity} assoc :bar :foo)
+             (sut/update {::sim-engine/entity-id :foo-entity} 12 assoc :bar :foo)
              (sut/entity-errors {::sim-engine/entity-id :foo-entity})))
       "Update can update a non existing entity, the creation is marked in the lifecycle status."))
 
@@ -165,7 +165,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
                                                                              :an :entity}
                                                               :created 3
                                                               :living 5}}}
-             (sut/dispose 10 {::sim-engine/entity-id :foo-entity})))
+             (sut/dispose {::sim-engine/entity-id :foo-entity} 10)))
       "Disposing an existing entity is updatng the lifecycle and remove its entity-state")
   (is (= {::sim-engine/entity
           {:foo-entity
@@ -177,7 +177,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
                                                 :why ::sim-engine/disposing-a-not-created-entity}]
                          :living 10}}}
          (-> #::sim-engine{}
-             (sut/dispose 10 {::sim-engine/entity-id :foo-entity})))
+             (sut/dispose {::sim-engine/entity-id :foo-entity} 10)))
       "Disposing a non existing entity creates it and its lifecycle data, and reports an error.")
   (is (= #::sim-engine{:entity {:foo-entity
                                 #::sim-engine{:disposed 10
@@ -193,7 +193,7 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
          (-> #::sim-engine{:entity {:foo-entity #::sim-engine{:disposed 7
                                                               :created 3
                                                               :living 5}}}
-             (sut/dispose 10 {::sim-engine/entity-id :foo-entity})))
+             (sut/dispose {::sim-engine/entity-id :foo-entity} 10)))
       "Disposing an already disposed entity reports an error."))
 
 (deftest lifecycle-status-test
@@ -274,8 +274,9 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
              (sut/is-disposed? {::sim-engine/entity-id :foo-entity})))
       "A disposed entity is disposed."))
 
+;; ********************************************************************************
 ;;; Assembly tests
-;;; ****************
+;; ********************************************************************************
 
 (def state0 {})
 
@@ -287,11 +288,11 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
 
 (def state2
   (-> state1
-      (sut/update 5 {::sim-engine/entity-id :uuid-1} assoc :and :another-data)))
+      (sut/update {::sim-engine/entity-id :uuid-1} 5 assoc :and :another-data)))
 
 (def state3
   (-> state2
-      (sut/dispose 12 {::sim-engine/entity-id :uuid-1})))
+      (sut/dispose {::sim-engine/entity-id :uuid-1} 12)))
 
 (deftest assembly-tests
   (is (nil? (sut/is-created? :non-existing state1)))
@@ -326,7 +327,6 @@ Note that `created` `bucket` is not modified on purpose as the real creation has
 (deftest schedule-test
   (is (= #::sim-engine{:future-events [#::sim-engine{:event :data
                                                      :entity-id :entity-uuid-1
-                                                     :bucket 3}]
-                       :entity-id :entity-uuid-1}
-         (sut/schedule {::sim-engine/entity-id :entity-uuid-1} nil {::sim-engine/event :data} 3))
+                                                     :bucket 3}]}
+         (sut/schedule nil {::sim-engine/entity-id :entity-uuid-1} 3 {::sim-engine/event :data}))
       "Copy entity id"))

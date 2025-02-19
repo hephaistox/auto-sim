@@ -113,7 +113,7 @@
                 :state {}
                 :past-events [:hey #:auto-sim.engine{:type :a
                                                      :bucket 2}]
-                :stopping-criteria [#::sut{:stopping-criteria ::sut/error-happen
+                :stopping-criteria [#::sut{:stopping-criteria ::sut/error-happens
                                            :current-event #::sut{:type :a
                                                                  :bucket 2}
                                            :errors [{::sut/why :test}]}]}

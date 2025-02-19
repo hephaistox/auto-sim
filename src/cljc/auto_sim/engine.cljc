@@ -101,7 +101,7 @@
                                                :past-events (conj past-events current-event)
                                                :stopping-criteria
                                                [#::sim-engine{:stopping-criteria
-                                                              ::sim-engine/error-happen
+                                                              ::sim-engine/error-happens
                                                               :current-event current-event
                                                               :errors errors}]}
                           :else (recur event-bucket

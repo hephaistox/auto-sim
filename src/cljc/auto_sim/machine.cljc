@@ -1,36 +1,31 @@
 (ns auto-sim.machine
-  "Model machines."
+  "Model machine.
+
+  Machine expects `::sim-engine/current-operation` field to be set."
   (:require
    [auto-sim.engine :as-alias sim-engine]
-   [auto-sim.entity :as sim-entity]))
-
-(defn- infinite-capacity*
-  [event-return event bucket pt new-event]
-  (if (and (number? bucket) (number? pt) (pos? pt))
-    (sim-entity/schedule-same-entity event-return event (+ bucket pt) new-event)
-    (update event-return
-            ::sim-engine/errors
-            conj
-            #::sim-engine{:why :buckets-cant-be-calculated
-                          :pt pt
-                          :bucket bucket})))
+   [auto-sim.route  :as sim-route]))
 
 (defn infinite-capacity
-  "Mimics a machine processing during `pt` buckets, an execute `event` then.
+  "Models a machine processing during.
 
-  `pt` is the value associated to key `kw` in the `current-operation` of `event`.
+  The duration of the processing is taken in the entity state [`::sim-engine/current-operation` `kw`].
 
-  Returns `event-return` updated with this new event, starting at `(+ pt bucket)`"
+  Returns `event-return` updated with `postponed-event`,  at `(+ pt bucket)`"
   [event-return event bucket postponed-event kw]
-  (let [{::sim-engine/keys [current-operation]} event
-        pt (get current-operation kw)
-        new-event (merge event postponed-event)]
+  (let [current-operation (sim-route/current-operation event-return event bucket)]
     (if (nil? current-operation)
       (update event-return
               ::sim-engine/errors
-              conj
-              #::sim-engine{:why :current-operation-should-be-set
-                            :current-operation current-operation
-                            :bucket bucket
-                            :event event})
-      (infinite-capacity* event-return event bucket pt new-event))))
+              (fnil conj [])
+              #::sim-engine{:why :current-operation-is-nil})
+      (let [pt (get current-operation kw)]
+        (if (and (number? bucket) (number? pt) (pos? pt))
+          (sim-route/schedule event-return event (+ bucket pt) postponed-event)
+          (update event-return
+                  ::sim-engine/errors
+                  (fnil conj [])
+                  {::sim-engine/why :buckets-cant-be-calculated
+                   :machine-proceessing pt
+                   :kind kw
+                   :bucket bucket}))))))
