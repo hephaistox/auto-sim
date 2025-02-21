@@ -218,16 +218,18 @@
   [event-return event bucket entity-name entity-data]
   (let [{::sim-engine/keys [state future-events]} event-return
         entity-id (create-id)
-        {::keys [nb-entity max-nb-entity waiting-time]} event
-        nb-entity (inc nb-entity)]
-    (assoc event-return
-           ::sim-engine/entity-id entity-id
-           ::sim-engine/state (create state bucket entity-name entity-id entity-data)
-           ::sim-engine/future-events (cond-> future-events
-                                        (< nb-entity max-nb-entity)
-                                        (conj (assoc event
-                                                     ::sim-engine/bucket (+ bucket waiting-time)
-                                                     ::nb-entity nb-entity))))))
+        {::keys [nb-entity max-nb-entity waiting-time]} event]
+    (if (< nb-entity max-nb-entity)
+      (let [nb-entity (inc nb-entity)]
+        (assoc event-return
+               ::sim-engine/entity-id entity-id
+               ::sim-engine/state (create state bucket entity-name entity-id entity-data)
+               ::sim-engine/future-events (cond-> future-events
+                                            (< nb-entity max-nb-entity)
+                                            (conj (assoc event
+                                                         ::sim-engine/bucket (+ bucket waiting-time)
+                                                         ::nb-entity nb-entity)))))
+      event-return)))
 
 (defn schedule*
   [event-return _event _bucket new-event entity-id bucket]
@@ -259,6 +261,15 @@
   Returns `event-return` with `future-events` updated."
   [event-return event bucket new-event]
   (schedule* event-return event bucket new-event (::sim-engine/entity-id event) bucket))
+
+(defn schedule-events
+  "Schedules the execution of `new-event` at `bucket` for the same entity than `event`
+
+  Returns `event-return` with `future-events` updated."
+  [event-return event bucket new-events]
+  (reduce #(schedule* %1 event bucket %2 (::sim-engine/entity-id event) bucket)
+          event-return
+          new-events))
 
 (defn sink
   "End of life of an entity"

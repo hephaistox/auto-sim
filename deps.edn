@@ -31,7 +31,7 @@
   :test-clj {:extra-paths ["test/unit/cljc"]
              :main-opts ["-m" "cognitect.test-runner" "-r" ".*-test.*" "-d" "test/unit/cljc"]}
   :test-demo {:extra-paths ["test/demo/cljc"]
-              :main-opts ["-m" "cognitect.test-runner" "-r" ".*-test.*" "-d" "test/demo/cljc"]}}
+              :main-opts ["-m" "cognitect.test-runner" "-r" ".*" "-d" "test/demo/cljc"]}}
  :deps {babashka/fs #:mvn{:version "0.5.22"}
         babashka/process #:mvn{:version "0.5.22"}
         com.github.hephaistox/auto-core {:git/sha "0c3949ca20c9b0610b3871cf559ac18a595e20bf"}

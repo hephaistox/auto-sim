@@ -4,6 +4,6 @@
 (defn fifo
   "Select the first queued consumer in the queue."
   [[unqueued-event & rqueue :as _queue]]
-  [unqueued-event rqueue])
+  [unqueued-event (or rqueue [])])
 
 (defn lifo "Select the last queued consumer" [queue] [(last queue) (butlast queue)])

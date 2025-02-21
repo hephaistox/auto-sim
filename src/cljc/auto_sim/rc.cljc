@@ -7,99 +7,107 @@
 
   A resource defines:
   * `capacity` (default 1) total number of available resources, note that this number may evolve over time.
-  * `consumption` (default []) list of events currently consumption this resource, is useful to track them and enabling preemption and failures. The event contains the information on the waiting entity.
+  * `consumption` (default []) list of events currently consumption this resource, is useful to track them and enabling preemption and failures. The postponable-event contains the information on the waiting entity.
   * `queue` (default []) list of blocked entities.
   * `renewable?` (default true) when true, the disposing is not giving back the values."
   (:require
    [auto-sim.engine      :as-alias sim-engine]
+   [auto-sim.entity      :as sim-entity]
    [auto-sim.rc.resource :as sim-rc-resource]))
+
+(defn nb-consumed-resources
+  "Returned how much resources `resource-name` are currently consumed"
+  [event-return _event _bucket resource-name]
+  (let [resource (get-in event-return [::sim-engine/state ::sim-engine/resource resource-name])]
+    (sim-rc-resource/nb-consumed-resources resource)))
+
+(defn nb-available-resources
+  "Returned how much resources `resource-name` are available"
+  [event-return _event _bucket resource-name]
+  (let [resource (get-in event-return [::sim-engine/state ::sim-engine/resource resource-name])]
+    (sim-rc-resource/nb-available-resources resource)))
 
 (defn define-resource
   "Update `state` to define `resource-name` with `resource`.
 
   Note that `resource` is defaulted if necessary."
-  [state resource-name resource]
-  (-> state
-      (assoc-in [::sim-engine/resource resource-name]
-                (sim-rc-resource/defaulting-values resource))))
+  [event-return _event _bucket resource-name resource]
+  (update event-return
+          ::sim-engine/state
+          assoc-in
+          [::sim-engine/resource resource-name]
+          (sim-rc-resource/defaulting-values resource)))
 
 (defn seize
-  "The `event` is executed when the resource called `resource-name` has `quantity` items available.
+  "The `postponable-event` is executed when the resource called `resource-name` has `quantity` items available.
 
   There are two cases:
-  * If resources are lacking, the consumption is postponed, and the `event` stored in the `queue` of the `resource`. It may be triggered latter on, by a freeing or capacity update.
-  * If resources are sufficient, a consumption is added in the `resource`, the `event` is planned to be executed now by adding it in the `future-events`.
+  * If resources are lacking, the consumption is postponed, and the `postponable-event` stored in the `queue` of the `resource`. It may be triggered latter on, when freeing or capacity updating.
+  * If resources are sufficient, a consumption is added in the `resource`, the `postponable-event` is planned to be executed now by adding it in the `future-events`.
+
+  The `priority` defines.
 
   Returns a map:
   * `state`
   * `future-events`"
-  [state future-events seizing-bucket event resource-name quantity]
-  (let [resource (get-in state [::sim-engine/resource resource-name])]
-    (if (or (nil? resource) (nil? event))
-      ;;NOTE seizing is noop
-      {:state state
-       ;;TODO event should be used in stopping-criteria
-       :event (assoc event
-                     ::sim-engine/errors
-                     #::sim-engine{:resource-name resource-name
-                                   :quantity quantity
-                                   :seizing-bucket seizing-bucket
-                                   :possible-resources (-> state
-                                                           ::sim-engine/resource
-                                                           keys
-                                                           vec)})
-       :future-events future-events}
-      (let [event (-> event
-                      (assoc ::sim-engine/bucket seizing-bucket))
-            {:keys [consumption-uuid resource errors]}
-            (sim-rc-resource/seize resource quantity event)
-            state (assoc-in state [::sim-engine/resource resource-name] resource)
-            event (cond-> event
-                    errors (assoc ::sim-engine/errors errors))]
-        (if (nil? consumption-uuid)
-          ;;NOTE event is postponed, as no resource is available.
-          {:state state
-           :event (assoc event ::sim-engine/errors #::sim-engine{:why :no-resource-available})
-           :future-events future-events}
-          ;;NOTE in this case, the consumption is started, event could be started
-          {:state state
-           :future-events (->> consumption-uuid
-                               (assoc-in event [::sim-engine/resource resource-name])
-                               (conj future-events))})))))
+  [event-return event bucket resource-name quantity postponable-event priority]
+  (if-let [resource (get-in event-return [::sim-engine/state ::sim-engine/resource resource-name])]
+    (let [{:keys [consumption-uuid resource errors]}
+          (sim-rc-resource/seize resource event quantity priority postponable-event)]
+      (cond-> (-> event-return
+                  (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource))
+        consumption-uuid (sim-entity/schedule event bucket postponable-event)
+        (seq errors) (update ::sim-engine/errors #(reduce (fnil conj []) % errors))))
+    ;;NOTE seizing is noop
+    (update event-return
+            ::sim-engine/errors
+            (fnil conj [])
+            #::sim-engine{:why :resource-not-found
+                          :resource-name resource-name
+                          :quantity quantity
+                          :possible-resources (-> event-return
+                                                  ::sim-engine/state
+                                                  ::sim-engine/resource
+                                                  keys
+                                                  vec)})))
 
 (defn dispose
-  "Dispose a resource called `resource-name` for entity of `event`.
+  "Dispose a resource called `resource-name` for entity of `postponable-event`.
 
   The new available resources can be used by some other entities. `unqueueing-policy-fn` is used to select events to unqueue.
 
   Returns a pair:
   * `state`
   * `future-events`"
-  [state future-events event resource-name unqueueing-policy-fn]
-  ;;TODO Remove unblocking that should be stored somewhere
-  (if (nil? resource-name)
-    [[] state]
-    (let [{::sim-engine/keys [bucket entity-id]} event
-          {:keys [unqueued resource]}
-          (-> state
-              (get-in [::sim-engine/resource resource-name])
-              (sim-rc-resource/dispose entity-id unqueueing-policy-fn nil 1))
-          state (assoc-in state [::sim-engine/resource resource-name] resource)]
-      (reduce (fn [[state future-events]
-                   {::sim-engine/keys [quantity event]
-                    :as _blocking}]
-                (seize state future-events resource-name quantity bucket event))
-              [state future-events]
-              unqueued))))
+  [event-return event bucket resource-name quantity unqueueing-policy-fn priority-comp]
+  (if-let [resource (get-in event-return [::sim-engine/state ::sim-engine/resource resource-name])]
+    (let [{:keys [unqueued resource errors]}
+          (sim-rc-resource/dispose resource priority-comp unqueueing-policy-fn quantity)]
+      (cond-> event-return
+        resource (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource)
+        (seq unqueued) (sim-entity/schedule-events event bucket unqueued)
+        (seq errors) (update ::sim-engine/errors #(reduce (fnil conj []) % errors))))
+    (update event-return
+            ::sim-engine/errors
+            (fnil conj [])
+            #::sim-engine{:why :resource-not-found
+                          :resource-name resource-name
+                          :quantity quantity})))
 
-(defn resource-update
+(defn update-capacity
   "Update the resource capacity."
-  [state future-events resource-name new-capacity preemption-policy-fn unqueueing-policy-fn]
-  (let [resource (get-in state [::sim-engine/resource resource-name])
-        [unblocked-events resource] (sim-rc-resource/update-capacity resource
-                                                                     new-capacity
-                                                                     preemption-policy-fn
-                                                                     unqueueing-policy-fn)]
-    [unblocked-events
-     (assoc-in state [::sim-engine/resource resource-name] resource)
-     (update future-events ::sim-engine/future-events concat unblocked-events)]))
+  [event-return event bucket resource-name new-capacity preemption-policy-fn unqueueing-policy-fn]
+  (if-let [resource (get-in event-return [::sim-engine/state ::sim-engine/resource resource-name])]
+    (let [{:keys [events _preempt resource]} (sim-rc-resource/update-capacity resource
+                                                                              preemption-policy-fn
+                                                                              unqueueing-policy-fn
+                                                                              new-capacity)]
+      (cond-> event-return
+        resource (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource)
+        events (sim-entity/schedule-events event bucket events)))
+    (update event-return
+            ::sim-engine/errors
+            (fnil conj [])
+            #::sim-engine{:why :resource-not-found
+                          :resource-name resource-name
+                          :new-capacity new-capacity})))

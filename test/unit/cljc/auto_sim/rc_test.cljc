@@ -2,146 +2,124 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [auto-sim.engine               :as-alias sim-engine]
-   [auto-sim.rc                   :as sut]
-   [auto-sim.rc.preemption-policy :refer [no-preemption]]
-   [auto-sim.rc.unqueueing-policy :refer [fifo]]))
+   [auto-sim.engine                  :as-alias sim-engine]
+   [auto-sim.rc                      :as sut]
+   [auto-sim.rc.preemption-policy    :refer [no-preemption]]
+   [auto-sim.rc.resource.consumption :as sim-rc-consumption]
+   [auto-sim.rc.unqueueing-policy    :refer [fifo]]))
 
 (deftest define-resource-test
-  (is (= {::sim-engine/resource {:foo #::sim-engine{:resource :content
-                                                    :capacity 1
-                                                    :consumption {}
-                                                    :queue []
-                                                    :renewable? true}}}
-         (sut/define-resource {} :foo #::sim-engine{:resource :content}))))
+  (is (= {::sim-engine/state {::sim-engine/resource {:foo #::sim-engine{:resource :content
+                                                                        :capacity 1
+                                                                        :consumption {}
+                                                                        :queue []
+                                                                        :renewable? true}}}}
+         (sut/define-resource {} nil 0 :foo #::sim-engine{:resource :content}))))
 
 (deftest seize-test
-  (is (= [{:state :a} []] (sut/seize {:state :a} [] 1 {} ::test 1))
+  (is (= {::sim-engine/errors [#::sim-engine{:why :resource-not-found
+                                             :resource-name :auto-sim.rc-test/test
+                                             :quantity 1
+                                             :possible-resources []}]}
+         (sut/seize {} nil 3 ::test 1 {} :high))
       "If the `resource-name` is not already defined in the `state`, the seizing is noop")
   (is
-   (= [{::sim-engine/resource
-        {::test #::sim-engine{:capacity 1
-                              :consumption {}
-                              :queue [#::sim-engine{:event #::sim-engine{:type :a
-                                                                         :entity-id :uuid-1
-                                                                         :bucket 1}
-                                                    :consumption-quantity 2}]
-                              :renewable? true}}}
-       []]
+   (= #::sim-engine{:state {::sim-engine/resource
+                            {::test #::sim-engine{:capacity 1
+                                                  :consumption {}
+                                                  :queue [#::sim-engine{:event {:event :seizing}
+                                                                        :priority :high
+                                                                        :consumption-quantity 2}]
+                                                  :renewable? true}}}}
       (-> {}
-          (sut/define-resource ::test {})
-          (sut/seize []
-                     1 #::sim-engine{:type :a
-                                     :entity-id :uuid-1}
-                     ::test 2)))
-   "Seizing an unavailable resource postpones the event execution. So it is in the queue and not in the future-events")
-  (is (= {::sim-engine/resource {::test #::sim-engine{:capacity 3
-                                                      :consumption
-                                                      {:uuid #::sim-engine{:entity-id :uuid-1
-                                                                           :consumption-quantity 2}}
-                                                      :queue []
-                                                      :renewable? true}}}
-         (-> {}
-             (sut/define-resource ::test {::sim-engine/capacity 3})
-             (sut/seize []
-                        1 #::sim-engine{:type :a
-                                        :entity-id :uuid-1}
-                        ::test 2)
-             first
-             (update-in [::sim-engine/resource ::test ::sim-engine/consumption]
-                        update-keys
-                        (fn [_] :uuid))))
-      "When seizing an available resource, the state stores that consumption.")
-  (is (= [#::sim-engine{:type :a
-                        :bucket 1
-                        :entity-id :uuid-1
-                        ::sim-engine/resource {::test :uuid}}]
-         (mapv (fn [event] (assoc-in event [::sim-engine/resource ::test] :uuid))
-               (-> {}
-                   (sut/define-resource ::test {::sim-engine/capacity 3})
-                   (sut/seize []
-                              1 #::sim-engine{:type :a
-                                              :entity-id :uuid-1}
-                              ::test 2)
-                   second)))
-      "When seizing an available resource, the event is inserted in `future-events`"))
+          (sut/define-resource nil 0 ::test {})
+          (sut/seize nil 3 ::test 2 {:event :seizing} :high)))
+   "Seizing an non-available resource postpones the event execution. So it is in the queue and not in the future-events")
+  (is
+   (= #::sim-engine{:state {::sim-engine/resource
+                            {::test #::sim-engine{:capacity 3
+                                                  :consumption
+                                                  {:uuid #::sim-engine{:entity-id :uuid-1
+                                                                       :consumption-quantity 2
+                                                                       :priority :high}}
+                                                  :queue []
+                                                  :renewable? true}}}
+                    :future-events [#::sim-engine{:type :a
+                                                  :bucket 3
+                                                  :entity-id :uuid-1}]}
+      (-> {}
+          (sut/define-resource nil nil ::test {::sim-engine/capacity 3})
+          (sut/seize {::sim-engine/entity-id :uuid-1} 3 ::test 2 #::sim-engine{:type :a} :high)
+          (update-in [::sim-engine/state ::sim-engine/resource ::test ::sim-engine/consumption]
+                     update-keys
+                     (fn [_] :uuid))))
+   "When seizing an available resource, the state stores that consumption, and the event is scheduled now."))
 
 (deftest dispose-test
-  (is (= [{} []]
-         (sut/dispose {}
-                      []
-                      #:sim-engine{:type :a
-                                   :date 1}
-                      ::a
-                      fifo))
-      "Disposing a non existing resource is noop")
-  (is (= [{::sim-engine/resource {::test #::sim-engine{:consumption #::sim-engine{:type :a
-                                                                                  :entity-id
-                                                                                  :uuid-1}
-                                                       :queue []}}}
-          []]
+  (is
+   (=
+    {::sim-engine/errors [#::sim-engine{:why :resource-not-found
+                                        :resource-name :auto-sim.rc-test/non-existing-resource
+                                        :quantity 3}]}
+    (->
+      {}
+      (sut/dispose nil 7 ::non-existing-resource 3 (sim-rc-consumption/compare-by-order []) fifo)))
+   "Disposing a non existing resource is noop")
+  (is (= #::sim-engine{:state #::sim-engine{:resource {::test #::sim-engine{:capacity 3
+                                                                            :consumption {}
+                                                                            :queue []
+                                                                            :renewable? true}}}
+                       :errors [#::sim-engine{:why :cant-dispose-quantity
+                                              :capacity 3
+                                              :consumption-uuid nil
+                                              :quantity 3
+                                              :quantity-to-dispose 3}]}
          (-> {}
-             (sut/define-resource ::test {::sim-engine/capacity 2})
-             (sut/seize []
-                        ::test 2
-                        1 #::sim-engine{:type :a
-                                        :entity-id :uuid-1})
-             first
-             (sut/dispose [] #::sim-engine{} ::test fifo)))
-      "Disposing an existing resource, currently consumption is removing it")
+             (sut/define-resource nil nil ::test {::sim-engine/capacity 3})
+             (sut/dispose nil 7 ::test 3 (sim-rc-consumption/compare-by-order []) fifo)))
+      "Disposing more than what is seized")
+  (is (= #::sim-engine{:state {::sim-engine/resource {::test #::sim-engine{:capacity 3
+                                                                           :consumption {}
+                                                                           :queue []
+                                                                           :renewable? true}}}
+                       :future-events [{:event :a
+                                        :auto-sim.engine/entity-id :entity-1
+                                        :auto-sim.engine/bucket 0}]}
+         (-> {}
+             (sut/define-resource nil nil ::test {::sim-engine/capacity 3})
+             (sut/seize {::sim-engine/entity-id :entity-1} 0 ::test 3 {:event :a} :high)
+             (sut/dispose nil 7 ::test 3 (sim-rc-consumption/compare-by-order []) fifo)))
+      "Disposing exactly what is seized")
+  (is (= 2
+         (-> {}
+             (sut/define-resource nil nil ::test {::sim-engine/capacity 5})
+             (sut/seize {::sim-engine/entity-id :entity-1} 0 ::test 5 {:event :a} :high)
+             (sut/dispose nil 7 ::test 3 (sim-rc-consumption/compare-by-order []) fifo)
+             (sut/nb-consumed-resources nil nil ::test)))
+      "Disposing a part of what is seized")
+  ;;
   (is "Disposing a resource with blocked events release them"))
 
-(deftest resource-update-test
-  (is (= #:sim-engine{:state #::sim-engine{:resource {::test #::sim-engine{:capacity 7
-                                                                           :queue []}}}
-                      :future-events []}
-         (sut/resource-update {} [] ::test 7 no-preemption fifo))
-      "Non existing resource is created")
-  (is (= #:sim-engine{:state #::sim-engine{:resource {::test #::sim-engine{:capacity 7
-                                                                           :queue []}}}
-                      :future-events []}
-         (sut/resource-update #::sim-engine{:resource {::test #::sim-engine{:capacity 5
-                                                                            :queue []}}}
-                              []
-                              ::test
-                              7
-                              no-preemption
-                              fifo))
+(deftest update-capacity-test
+  (is (= {::sim-engine/errors [#::sim-engine{:why :resource-not-found
+                                             :resource-name :auto-sim.rc-test/test
+                                             :new-capacity 7}]}
+         (->
+           {}
+           (sut/update-capacity {::sim-engine/entity-id :entity-1} 2 ::test 7 no-preemption fifo)))
+      "Non existing resource are documented as an error")
+  (is (= #::sim-engine{:state #::sim-engine{:resource {::test #::sim-engine{:capacity 7
+                                                                            :consumption {}
+                                                                            :renewable? true
+                                                                            :queue []}}}}
+         (-> {}
+             (sut/define-resource nil nil ::test {::sim-engine/capacity 3})
+             (sut/update-capacity #::sim-engine{:resource {::test #::sim-engine{:capacity 5
+                                                                                :queue []}}}
+                                  []
+                                  ::test
+                                  7
+                                  no-preemption
+                                  fifo)))
       "Existing resource is updated"))
 
-#_(defn- wo-initial-snapshot [model] (dissoc model ::sim-engine/initial-snapshot))
-
-(defn- resources-kw
-  [model]
-  (-> model
-      (get-in [::sim-engine/initial-snapshot ::sim-engine/state ::sim-engine/resource])
-      keys
-      set))
-
-#_(deftest wrap-model-test
-    (testing "If no resource is defined, doesn't change the model"
-      (is (nil? (sut/wrap-model nil nil nil)))
-      (is (nil? (sut/wrap-model nil nil nil))))
-    (is (= [{:a :b
-             ::sim-engine/model-data {::sim-engine/rc {:ra nil
-                                                       :rb {}}}}
-            #{:ra :rb}]
-           ((juxt wo-initial-snapshot resources-kw)
-            (-> {:a :b
-                 ::sim-engine/model-data {::sim-engine/rc {:ra nil
-                                                           :rb {}}}}
-                (sut/wrap-model nil nil))))
-        "Resources are added")
-    (is (= [{:a :b
-             ::sim-engine/model-data {::sim-engine/rc {:rc nil
-                                                       :rd {}}}}
-            #{:ra :rb :rc :rd}]
-           ((juxt wo-initial-snapshot resources-kw)
-            (-> {:a :b
-                 ::sim-engine/initial-snapshot {::sim-engine/state {::sim-engine/resource {:ra :ra
-                                                                                           :rb
-                                                                                           :rb}}}
-                 ::sim-engine/model-data {::sim-engine/rc {:rc nil
-                                                           :rd {}}}}
-                (sut/wrap-model nil nil))))
-        "Existing data are not overidden"))

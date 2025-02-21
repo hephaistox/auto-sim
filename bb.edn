@@ -20,13 +20,15 @@
                     [auto-build.echo :refer [level1-header]]]
          :task (-> (task-clean/clean level1-header "." [".DS_Store"] [".cpcache"] (current-task))
                    exit)}
-  clj-test
-  {:doc "Test with clj"
-   :requires [[auto-build.tasks.clj-test :as build-clj-test]
-              [auto-build.echo :refer [level1-header]]]
-   :task (->
-           (build-clj-test/clj-test level1-header "." "clj-test-runner" (current-task) ["test-clj"])
-           exit)}
+  clj-test {:doc "Test with clj"
+            :requires [[auto-build.tasks.clj-test :as build-clj-test]
+                       [auto-build.echo :refer [level1-header]]]
+            :task (-> (build-clj-test/clj-test level1-header
+                                               "."
+                                               "clj-test-runner"
+                                               (current-task)
+                                               ["test-clj" "test-demo"])
+                      exit)}
   cljs-browser-test
   {:doc "Test with cljs in browser"
    :requires [[auto-build.tasks.cljs-browser-test :as build-cljs-browser]

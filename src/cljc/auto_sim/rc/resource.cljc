@@ -37,7 +37,7 @@
   [{::sim-engine/keys [capacity]
     :or {capacity 1}
     :as resource}]
-  (max 0 (- (or capacity 0) (nb-consumed-resources resource))))
+  (max 0 (- capacity (nb-consumed-resources resource))))
 
 (defn seize
   "If a `resource` contains enough available items, a `consumption` is created and stored in the `resource`.
@@ -47,12 +47,12 @@
   * `consumption-uuid` or `nil` if the execution is postponed awaiting for a resource disposal
   *  updated `resource` reflecting the consumption
   * `errors`"
-  [resource event consumption-quantity priority]
+  [resource event consumption-quantity priority postponable-event]
   (if (>= (compare (nb-available-resources resource) consumption-quantity) 0)
-    (sim-rc-consumption/consume resource event consumption-quantity priority)
-    (sim-rc-queue/queue-event resource event consumption-quantity priority)))
+    (sim-rc-consumption/start resource event consumption-quantity priority)
+    (sim-rc-queue/queue-event resource postponable-event consumption-quantity priority)))
 
-(defn new-available-items
+(defn- unqueue-attempts
   "Try to unqueue events regarding the newly available items.
 
   Returns a map with:
@@ -66,60 +66,90 @@
      :events unqueued}))
 
 (defn dispose-consumption-uuid
-  "Removes a specific `consumption-uuid` in the `resource`.
+  "Dispose a specific `consumption-uuid` in the `resource`.
 
   `unqueueing-policy-fn` is used to determine in which order events should be released.
 
   Returns a map with:
   * `events` list of events to add in the `future-events` again.
-  * `resource` updated with consumption `consumption-uuid` removed."
+  * `resource` updated with consumption `consumption-uuid` removed.
+  * `errors` if freeing has raised an error"
   [resource unqueueing-policy-fn consumption-uuid]
-  (let [{:keys [resource errors]} (sim-rc-consumption/free resource consumption-uuid)]
+  (let [{:keys [resource errors]} (sim-rc-consumption/ended resource consumption-uuid)]
     (if errors
       {:resource resource
        :errors errors}
-      (new-available-items resource unqueueing-policy-fn))))
+      (unqueue-attempts resource unqueueing-policy-fn))))
 
 (defn update-capacity
   "Returns a map with
-  * `unqueued` list of events that should be seized again
+  * `events` list of events that should be seized again
   * `resource` updated with the resource capacity
   * `preempts` the list of event to stop execution of
 
   If the new capacity is lower than the number of element consumed (i.e. in `consumption`), then the `preemption-policy` choose one event to stop:
   * `::no-premption` is the only implemented, it doesn't do anything and let the currently executing event finish."
-  [{::sim-engine/keys [capacity]
-    :or {capacity 1}
-    :as resource}
-   preemption-policy-fn
-   unqueueing-policy-fn
-   new-capacity]
-  (let [resource (assoc resource ::sim-engine/capacity new-capacity)]
+  [resource preemption-policy-fn unqueueing-policy-fn new-capacity]
+  (let [{::sim-engine/keys [capacity]
+         :or {capacity 1}}
+        resource
+        resource (assoc resource ::sim-engine/capacity new-capacity)]
     (if (< new-capacity capacity)
       ;;NOTE Capacity decrease
-      (preemption-policy-fn resource)
+      {:preempts (preemption-policy-fn resource)}
       ;;NOTE Capacity increase
-      (new-available-items resource unqueueing-policy-fn))))
+      (unqueue-attempts resource unqueueing-policy-fn))))
 
 (defn dispose
-  "Dispose `quantity` items of `resource` that has been seized by entity `entity-id`.
+  "Dispose `quantity` items of `resource`
 
   `unqueueing-policy-fn` is used to determine in which order events should be released.
 
   Returns a map with:
   * `unqueued` list of events that should be try to seize again the resource.
-  * `resource` updated with consumptions removed."
-  [resource entity-id unqueueing-policy-fn priority-comp quantity]
-  (let [consumptions (sim-rc-consumption/consumption-by-priority resource entity-id priority-comp)]
-    (loop [consumptions consumptions
-           quantity-to-dispose quantity
-           resource resource
-           all-errors []]
-      (let [[[[consumption-uuid consumption]] & rconsumptions] consumptions
-            {:keys [consumption-quantity]} consumption
-            new-quantity-to-dispose (- quantity-to-dispose consumption-quantity)
-            {:keys [resource errors]} (sim-rc-consumption/free resource consumption-uuid)]
-        (if (pos? new-quantity-to-dispose)
-          (recur rconsumptions new-quantity-to-dispose resource (reduce conj all-errors errors))
-          (cond-> (new-available-items resource unqueueing-policy-fn)
-            all-errors (assoc :errors all-errors)))))))
+  * `resource` updated with consumptions removed.
+  * `errors` if consumption-uuid found are not existing"
+  [resource priority-comp unqueueing-policy-fn quantity]
+  (let [capacity (::sim-engine/capacity resource)]
+    (if-not (and (integer? capacity) (pos? capacity))
+      {:errors [#::sim-engine{:why :resource-dont-have-capacity
+                              :capacity (::sim-engine/capacity resource)}]}
+      (let [consumptions (sim-rc-consumption/consumption-by-priority resource priority-comp)]
+        (loop [[[consumption-uuid consumption] & rconsumptions] consumptions
+               quantity-to-dispose quantity
+               resource resource
+               all-errors []]
+          (cond
+            (= 0 quantity-to-dispose)
+            ;;NOTE The quantity to dispose is achieved
+            (cond-> (unqueue-attempts resource unqueueing-policy-fn)
+              (seq all-errors) (assoc :errors all-errors))
+            (and (or (nil? consumption-uuid) (empty? consumption)) (> quantity-to-dispose 0))
+            ;;NOTE No more consumption but the disposed quantity is not reach yet
+            {:errors [#::sim-engine{:why :cant-dispose-quantity
+                                    :capacity capacity
+                                    :consumption-uuid consumption-uuid
+                                    :quantity quantity
+                                    :quantity-to-dispose quantity-to-dispose}]}
+            :else (let [{::sim-engine/keys [consumption-quantity]} consumption]
+                    (if-not (and (integer? consumption-quantity) (pos? consumption-quantity))
+                      ;;NOTE Consumption is malformed
+                      {:errors [#::sim-engine{:why :consumption-malformed
+                                              :consumption-quantity consumption-quantity}]}
+                      (if (>= quantity-to-dispose consumption-quantity)
+                        ;;NOTE Even after that consumption removed, there are still to dispose
+                        (let [{:keys [resource errors]} (sim-rc-consumption/ended resource
+                                                                                  consumption-uuid)]
+                          (recur rconsumptions
+                                 (- quantity-to-dispose consumption-quantity)
+                                 resource
+                                 (reduce conj all-errors errors)))
+                        ;;NOTE Just a part of this consumption should be removed
+                        (let [resource (update-in resource
+                                                  [::sim-engine/consumption consumption-uuid]
+                                                  update
+                                                  ::sim-engine/consumption-quantity
+                                                  -
+                                                  quantity-to-dispose)]
+                          (cond-> (unqueue-attempts resource unqueueing-policy-fn)
+                            (seq all-errors) (assoc :errors all-errors))))))))))))

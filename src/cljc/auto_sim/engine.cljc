@@ -149,3 +149,5 @@
       (update ::sim-engine/future-events vec)
       (update ::sim-engine/past-events vec)
       (update ::sim-engine/stopping-criteria vec)))
+
+(defn run [model] (continue model (::sim-engine/initial-snapshot model)))

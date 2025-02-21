@@ -36,7 +36,7 @@
       "Successfully queuing an event in an empty queue.")
   (is (= 3
          (-> (sut/queue-event #::sim-engine{:resource-name ::test
-                                            :queue [{} {}]}
+                                            :queue [:stub1 :stub2]}
                               #::sim-engine{:type :a
                                             :bucket 1}
                               13
@@ -47,7 +47,7 @@
       "Further events are queued"))
 
 (deftest unqueue-event-test
-  (is (= {:resource #::sim-engine{:queue []}} (sut/unqueue-event {::sim-engine/queue nil} 1 fifo))
+  (is (= {:resource #::sim-engine{:queue []}} (sut/unqueue-event {::sim-engine/queue []} 1 fifo))
       "Unqueue an empty queue is noop")
   (is
    (= {:unqueued []
@@ -108,7 +108,7 @@
                      #::sim-engine{:event #::sim-engine{:type :b
                                                         :bucket 2}
                                    :consumption-quantity 1}]
-          :resource #::sim-engine{:queue nil}}
+          :resource #::sim-engine{:queue []}}
          (sut/unqueue-event #::sim-engine{:queue [#::sim-engine{:event #::sim-engine{:type :a
                                                                                      :bucket 1}
                                                                 :consumption-quantity 2}
@@ -124,7 +124,7 @@
                      #::sim-engine{:event #::sim-engine{:type :b
                                                         :bucket 2}
                                    :consumption-quantity 1}]
-          :resource #::sim-engine{:queue nil}}
+          :resource #::sim-engine{:queue []}}
          (sut/unqueue-event #::sim-engine{:queue [#::sim-engine{:event #::sim-engine{:type :a
                                                                                      :bucket 1}
                                                                 :consumption-quantity 2}
@@ -136,7 +136,7 @@
       "Available quantity is matching exactly the sum of released quantity")
   (is (= {:unqueued [#::sim-engine{:event #::sim-engine{:type :a
                                                         :bucket 0}}]
-          :resource {::sim-engine/queue nil}}
+          :resource {::sim-engine/queue []}}
          (sut/unqueue-event #::sim-engine{:queue [#::sim-engine{:event #::sim-engine{:type :a
                                                                                      :bucket 0}}]}
                             1
@@ -148,7 +148,7 @@
   (is (= {:unqueued [#::sim-engine{:event {:event :a}
                                    :priority :high
                                    :consumption-quantity 1}]
-          :resource #::sim-engine{:queue nil}}
+          :resource #::sim-engine{:queue []}}
          (-> (sut/queue-event {} {:event :a} 1 :high)
              :resource
              (sut/unqueue-event 1 fifo)))
@@ -177,7 +177,7 @@
                      #::sim-engine{:event {:d :b}
                                    :priority :high
                                    :consumption-quantity 2}]
-          :resource #::sim-engine{:queue nil}}
+          :resource #::sim-engine{:queue []}}
          (-> {}
              (sut/queue-event {:a :b} 1 :high)
              :resource
@@ -205,7 +205,7 @@
                      #::sim-engine{:event {:d :b}
                                    :priority :high
                                    :consumption-quantity 2}]
-          :resource #::sim-engine{:queue nil}}
+          :resource #::sim-engine{:queue []}}
          (-> {}
              (sut/queue-event {:a :b} 1 :high)
              :resource

@@ -7,15 +7,15 @@
   "Adds `event` in the queue of `resource` to wait for further available resources.
 
   Elements in the `queue` are stored under the `:auto-sim.engine/queue` key and are defined with:
-  * `:auto-sim.engine/event` the `event`
-  * `:auto-sim.engine/priority` priority used to define which element should be managed first.
+  * `:auto-sim.engine/event` the `event` waiting for an available resource.
+  * `:auto-sim.engine/priority` priority used to define which element should be taken into account first.
   * `:auto-sim.engine/consumption-quantity` = `consumption-quantity` (should be a strictly positive integer, otherwise queueuing is skipped).
 
   Queueing is skipped if `consumption-quantity` is not a valid positive integer.
 
   Returns a map of
-  * `:resource` updated
-  * `:errors` a vector"
+  * `:resource` updated if successful with `event` in its `queue`.
+  * `:errors` a vector of error if event is empty, if `consumption-quantity` is not a positive integer."
   [resource event consumption-quantity priority]
   (cond
     (empty? event) {:resource resource
@@ -67,13 +67,13 @@
             {:unqueued unqueued-events
              :resource (assoc resource ::sim-engine/queue queue)}
             (> available-capacity new-released-quantity)
-            ;;NOTE There are still available quantity, loop again
+            ;;NOTE There are still available quantity,  loop again
             (recur (conj unqueued-events unqueued) new-queue new-released-quantity)
             (= available-capacity new-released-quantity)
             ;;NOTE There is no more available quantity
             {:unqueued (conj unqueued-events unqueued)
              :resource (assoc resource ::sim-engine/queue new-queue)}
             :else
-            ;;NOTE The last unqueued element has a too big released-quantity, stops before this unqueueing
+            ;;NOTE The last unqueued element has a too big released-quantity, don't take the last unqueing into account
             {:unqueued unqueued-events
              :resource (assoc resource ::sim-engine/queue queue)}))))))
