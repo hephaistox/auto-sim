@@ -33,7 +33,7 @@
                            ::sim-engine/consumption
                            update-keys
                            (fn [k] (if (= k consumption-uuid) :uuid-stub k)))}))
-   "The consumption stores `entity-id` and `consumption-quantity` uder the generated `consumption-uuid`"))
+   "The consumption stores `entity-id` and `consumption-quantity` under the generated `consumption-uuid`"))
 
 (deftest free-test
   (is (= {:resource #::sim-engine{:consumption {}}}
@@ -50,7 +50,7 @@
                                    :resource resource
                                    :consumption-uuid #uuid "33497220-f844-11ee-9fa1-17acea14e8ee"}]}
            (sut/ended resource #uuid "33497220-f844-11ee-9fa1-17acea14e8ee")))
-      "A non existing consumption-uuid does not modify the  resource but returns an error"))
+      "A non existing consumption-uuid does not modify the resource but returns an error"))
 
 (deftest compare-by-order-test
   (is (neg? ((sut/compare-by-order [:a :b]) :a :b)) "a is before b -> negative value")

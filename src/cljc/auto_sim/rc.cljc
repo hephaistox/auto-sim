@@ -81,11 +81,11 @@
   * `future-events`"
   [event-return event bucket resource-name quantity unqueueing-policy-fn priority-comp]
   (if-let [resource (get-in event-return [::sim-engine/state ::sim-engine/resource resource-name])]
-    (let [{:keys [unqueued resource errors]}
+    (let [{:keys [events resource errors]}
           (sim-rc-resource/dispose resource priority-comp unqueueing-policy-fn quantity)]
       (cond-> event-return
         resource (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource)
-        (seq unqueued) (sim-entity/schedule-events event bucket unqueued)
+        (seq events) (sim-entity/schedule-events event bucket (mapv ::sim-engine/event events))
         (seq errors) (update ::sim-engine/errors #(reduce (fnil conj []) % errors))))
     (update event-return
             ::sim-engine/errors

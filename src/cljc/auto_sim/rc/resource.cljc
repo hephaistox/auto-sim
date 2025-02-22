@@ -106,7 +106,7 @@
   `unqueueing-policy-fn` is used to determine in which order events should be released.
 
   Returns a map with:
-  * `unqueued` list of events that should be try to seize again the resource.
+  * `events` list of events that should be try to seize again the resource.
   * `resource` updated with consumptions removed.
   * `errors` if consumption-uuid found are not existing"
   [resource priority-comp unqueueing-policy-fn quantity]

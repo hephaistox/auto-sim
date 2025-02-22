@@ -245,7 +245,7 @@
              (sut/seize #::sim-engine{:entity-id :entity-uuid} 3 :high #::sim-engine{:a :b3})
              :resource
              (sut/dispose (sim-rc-consumption/compare-by-order []) fifo 1)))
-      "Disposing 1 which is not e nough for next event")
+      "Disposing 1 which is not enough for next event")
   (is (= {:events [#::sim-engine{:event #::sim-engine{:a :b2}
                                  :priority :high
                                  :consumption-quantity 2}]

@@ -10,7 +10,7 @@
                                   :sha "3f288f1f16d167723ad87cc35b1dfee3c1681e10"}}}
   :cljs-deps {:extra-deps {metosin/malli #:mvn{:version "0.16.1"}
                            thheller/shadow-cljs {:mvn/version "2.28.19"}}
-              :extra-paths ["src/cljc" "test/unit/cljc"]}
+              :extra-paths ["src/cljc" "test/unit/cljc" "test/unit/clj"]}
   :codox {:exec-args
           {:description
            "`auto-sim` is about all core technical functionalities we may need to start a project."
@@ -26,9 +26,9 @@
                       io.github.hephaistox/auto-build {:git/sha
                                                        "e907e29f65049a805c5a33e2f60bbe838c268a1a"}
                       refactor-nrepl/refactor-nrepl {:mvn/version "3.10.0"}}
-         :extra-paths ["test/unit/cljc" "test/demo/cljc"]
+         :extra-paths ["test/unit/cljc" "test/unit/clj" "test/demo/cljc"]
          :jvm-opts ["-Djdk.attach.allowAttachSelf=true"]}
-  :test-clj {:extra-paths ["test/unit/cljc"]
+  :test-clj {:extra-paths ["test/unit/cljc" "test/unit/clj"]
              :main-opts ["-m" "cognitect.test-runner" "-r" ".*-test.*" "-d" "test/unit/cljc"]}
   :test-demo {:extra-paths ["test/demo/cljc"]
               :main-opts ["-m" "cognitect.test-runner" "-r" ".*" "-d" "test/demo/cljc"]}}
@@ -48,4 +48,4 @@
         org.apache.logging.log4j/log4j-slf4j2-impl #:mvn{:version "2.24.1"}
         org.clojure/tools.cli {:mvn/version "1.1.230"}
         org.clojure/tools.logging #:mvn{:version "1.3.0"}}
- :paths ["src/cljc"]}
+ :paths ["src/cljc" "src/clj"]}
