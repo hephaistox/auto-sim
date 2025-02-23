@@ -50,10 +50,11 @@
                                                :routings (vec rroutings)
                                                :bucket (+ bucket (:p routing))}))))))
 
-(->> (sim-engine/initial-snapshot 0
-                                  {:n-jobs 0}
-                                  [#::sim-engine{:type :new-job
-                                                 :bucket 0}])
-     (sim-engine/continue #::sim-engine{:sorter order-stub
-                                        :event-registry {:new-job new-job
-                                                         :new-op new-op}}))
+(-> #::sim-engine{:sorter order-stub
+                  :event-registry {:new-job new-job
+                                   :new-op new-op}}
+    (sim-engine/initial-snapshot 0
+                                 {:n-jobs 0}
+                                 [#::sim-engine{:type :new-job
+                                                :bucket 0}])
+    (sim-engine/continue))

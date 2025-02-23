@@ -2,6 +2,7 @@
   "This namespace is assembling the consumption and queue logics."
   (:require
    [auto-sim.engine                  :as-alias sim-engine]
+   [auto-sim.entity                  :as sim-entity]
    [auto-sim.rc.resource.consumption :as sim-rc-consumption]
    [auto-sim.rc.resource.queue       :as sim-rc-queue]))
 
@@ -50,7 +51,10 @@
   [resource event consumption-quantity priority postponable-event]
   (if (>= (compare (nb-available-resources resource) consumption-quantity) 0)
     (sim-rc-consumption/start resource event consumption-quantity priority)
-    (sim-rc-queue/queue-event resource postponable-event consumption-quantity priority)))
+    (sim-rc-queue/queue-event resource
+                              (sim-entity/copy-entity-id event postponable-event)
+                              consumption-quantity
+                              priority)))
 
 (defn- unqueue-attempts
   "Try to unqueue events regarding the newly available items.

@@ -8,7 +8,8 @@
    [auto-sim.entity                  :as sim-entity]
    [auto-sim.machine                 :as sim-machine]
    [auto-sim.ordering                :as sim-ordering]
-   [auto-sim.printer.rc-entity-route :as sim-printer-rc-entity-route]
+   [auto-sim.printer.rc-entity-route :as    sim-printer-rc-entity-route
+                                     :refer [uuid-idx]]
    [auto-sim.rc                      :as sim-rc]
    [auto-sim.rc.resource.consumption :as sim-rc-consumption]
    [auto-sim.rc.unqueueing-policy    :refer [fifo]]
@@ -23,7 +24,7 @@
 (def model-data
   #::sim-engine{:starting-bucket 0
                 :waiting-time 0
-                :max-nb-entity 4
+                :max-nb-entity 2
                 :routes {:blue [{:m :transp
                                  :pt 5}
                                 {:m :m4
@@ -126,68 +127,126 @@
              ::sim-engine/past-events
              count))))
 
+#_(defn uuid-idx [_ x] x)
+
 (defn past-events
   [model entity-translation]
   (->> model
        ::sim-engine/past-events
-       (mapv (fn [{::sim-engine/keys [type bucket entity-uuid]
+       (mapv (fn [{::sim-engine/keys [type bucket entity-id]
                    :as _event}]
                (cond
                  (sim-printer-rc-entity-route/check type [:CE])
-                 (println (str bucket
-                               "-new entity ("
-                               (sim-printer-rc-entity-route/uuid-idx entity-translation entity-uuid)
-                               ")")))))))
+                 (println
+                  (str bucket "-new entity (" (uuid-idx entity-translation entity-id) ")")))))))
 
 (defn entities
   [model entity-translation]
-  (doseq [[entity-uuid entity] (-> model
-                                   ::sim-engine/state
-                                   ::sim-engine/entity)]
+  (doseq [[entity-id entity] (-> model
+                                 ::sim-engine/state
+                                 ::sim-engine/entity)]
     (let [{::sim-engine/keys [entity-state]} entity
           {::sim-engine/keys [route-id route]} entity-state]
-      (println
-       (str "e(" (sim-printer-rc-entity-route/uuid-idx entity-translation entity-uuid)
-            "), route " (name route-id)
-            "=" (str/join "," (mapv (fn [{:keys [m pt]}] (str "(" (name m) "," pt ")")) route))))))
+      (println (str "- e(" (uuid-idx entity-translation entity-id)
+                    "), route " (name route-id)
+                    " = " (str/join ", "
+                                    (mapv (fn [{:keys [m pt]}] (str "(" (name m) "," pt ")"))
+                                          route))))))
+  model)
+
+(defn separator [model] (println (apply str (repeat 80 "*"))) model)
+
+(defn snapshot
+  [model]
+  (let [{::sim-engine/keys [bucket id iteration]} model]
+    (println (str "Iteration " iteration ", bucket " bucket)))
+  model)
+
+(defn snapshot-header
+  [model]
+  (let [{::sim-engine/keys [bucket iteration]} model] (print (str iteration " t(" bucket ") ")))
+  model)
+
+
+
+(defn event*
+  [event entity-translation]
+  (let [{::sim-engine/keys [type _bucket entity-id route-id current-operation]
+         ::sim-entity/keys [waiting-time nb-entity max-nb-entity]}
+        event
+        {:keys [m pt]} current-operation]
+    (->> (concat [(name type)]
+                 (case type
+                   :CE (concat [", creates entity " (inc nb-entity) " of " max-nb-entity]
+                               (if (>= (inc nb-entity) max-nb-entity)
+                                 [", last one"]
+                                 [", next in " waiting-time]))
+                   :PS [", starts product e(" (uuid-idx entity-translation entity-id) ")"]
+                   :IS [", e(" (uuid-idx entity-translation entity-id) ") seizes in " m]
+                   :MP [", e("
+                        (uuid-idx entity-translation entity-id)
+                        ") starts production on "
+                        m
+                        " during "
+                        pt
+                        " buckets"]
+                   :OS [", e(" (uuid-idx entity-translation entity-id) ") ends production on " m]
+                   :MT [", e(" (uuid-idx entity-translation entity-id) ") quits machine " m]
+                   :PT [", ends product e(" (uuid-idx entity-translation entity-id) ")"]
+                   []))
+         (apply str)
+         println)))
+
+(defn resources
+  [model entity-translation]
+  (doseq [[resource-id resource] (get-in model [::sim-engine/state ::sim-engine/resource])]
+    (let [{::sim-engine/keys [capacity consumption queue]} resource
+          prefix "    "]
+      (println (str "* " (name resource-id) " capa=" capacity))
+      (doseq [[_ consumption-detail] consumption]
+        (let [{::sim-engine/keys [consumption-quantity _priority entity-id]} consumption-detail]
+          (println
+           (str prefix "e(" (uuid-idx entity-translation entity-id) ") " consumption-quantity))))
+      (doseq [queue-item queue]
+        (let [{::sim-engine/keys [event _priority consumption-quantity]} queue-item]
+          (print (str prefix "\\-> quantity " consumption-quantity " required by "))
+          (event* event entity-translation)))))
   model)
 
 (defn next-event
   [model entity-translation]
-  (->> model
-       ::entity-future-events
-       first
-       (mapv (fn [evt] (:k)))))
-
-(defn snapshot!
-  [model]
-  (let [{::sim-engine/keys [bucket id iteration]} model]
-    (println (apply str (repeat 80 "*")))
-    (println "Iteration " iteration ", bucket" bucket ", id" id))
+  (-> model
+      ::sim-engine/future-events
+      first
+      (event* entity-translation))
   model)
 
 (defn errors
   [model]
   (let [{::sim-engine/keys [stopping-criteria]} model]
-    (when stopping-criteria
-      (doseq [{::sim-engine/keys [doc]} stopping-criteria]
-        (println "Errors:")
-        (when doc (println (apply format doc))))))
-  model)
+    (if (seq stopping-criteria)
+      (doseq [{::sim-engine/keys [doc]} stopping-criteria] (when doc (println (apply format doc))))
+      model)))
 
 (let [entity-translation (sim-printer-rc-entity-route/create-translation)]
   (reduce (fn [model i]
-            (println "model" model)
-            (if (::stopping-criteria model)
+            (if (seq (::sim-engine/stopping-criteria model))
               model
-              (-> model
-                  (sim-engine/run-iteration i)
-                  snapshot!
-                  errors
-                  ;(past-events new-model entity-translation)
-                  ;(entities entity-translation)
-                  #_sim-engine/clean-stop-criteria)))
+              (some-> model
+                      (sim-engine/run-iteration i)
+                      separator
+                      snapshot
+                      errors
+                      ;(entities entity-translation)
+                      (resources entity-translation)
+                      (next-event entity-translation))))
           (create-model model-data)
-          (range 2 10)))
+          (range 1 100)))
 
-(sim-engine/run-iteration (create-model model-data) 3)
+(-> model-data
+    create-model
+    (sim-engine/run-iteration 9))
+
+(comment
+ ;
+)

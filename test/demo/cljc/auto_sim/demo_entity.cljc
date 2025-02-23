@@ -78,8 +78,8 @@
   [model-data]
   (let [{::sim-engine/keys [starting-bucket waiting-time max-nb-entity]} model-data
         evt1 (sim-entity/n-entities-event starting-bucket max-nb-entity waiting-time :CE)]
-    (assoc model-data
-           ::sim-engine/initial-snapshot (sim-engine/initial-snapshot starting-bucket {} [evt1])
+    (assoc (-> model-data
+               (sim-engine/initial-snapshot starting-bucket {} [evt1]))
            ::sim-engine/sorter (sim-ordering/sorter (sim-ordering/fields ::sim-engine/bucket)
                                                     (sim-ordering/types [:CE :PA :MA :MP :MT :PT])
                                                     (sim-ordering/fields ::product))

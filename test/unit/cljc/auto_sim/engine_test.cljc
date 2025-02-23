@@ -3,6 +3,7 @@
    [auto-sim.engine   :as sut]
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
+   [auto-sim.engine   :as sim-engine]
    [auto-sim.ordering :as sim-ordering]))
 
 ;; ********************************************************************************
@@ -232,23 +233,22 @@
                            :bucket 2}]
                    :current-bucket 10
                    :event-bucket 2}]}
-    (let [a-evt (fn [event-return _ _]
-                  (-> event-return
-                      (update-in [::sut/state :foo] (fnil inc 0))))]
-      (-> #::sut{:sorter order-stub
-                 :event-registry {:a a-evt}}
-          (sut/initial-snapshot 10
-                                {}
-                                [#::sut{:type :a
-                                        :bucket 2}])
-          sut/continue
-          (select-keys [::sut/id
-                        ::sut/iteration
-                        ::sut/bucket
-                        ::sut/state
-                        ::sut/past-events
-                        ::sut/stopping-criteria
-                        ::sut/future-events]))))
+    (-> #::sut{:sorter order-stub
+               :event-registry {:a (fn [event-return _ _]
+                                     (-> event-return
+                                         (update-in [::sut/state :foo] (fnil inc 0))))}}
+        (sut/initial-snapshot 10
+                              {}
+                              [#::sut{:type :a
+                                      :bucket 2}])
+        sut/continue
+        (select-keys [::sut/id
+                      ::sut/iteration
+                      ::sut/bucket
+                      ::sut/state
+                      ::sut/past-events
+                      ::sut/stopping-criteria
+                      ::sut/future-events])))
    "When causality is broken, there is no advancement on `id` and `iteration`. The faulty event is moved to `past-events`")
   (is (= #::sut{:bucket 1
                 :future-events []
@@ -280,3 +280,39 @@
                     [::sut/stopping-criteria 0 ::sut/exception]
                     some?))
       "When execution is failing, returns a failed-event-execution"))
+
+(deftest run-iteration-test
+  (is (= 2
+         (-> #::sim-engine{:sorter order-stub
+                           :event-registry {:a (fn [event-return _ _]
+                                                 (-> event-return
+                                                     (update-in [::sut/state :foo] (fnil inc 0))))}}
+             (sut/initial-snapshot 1
+                                   {}
+                                   [#::sut{:type :a
+                                           :bucket 2}
+                                    #::sut{:type :a
+                                           :bucket 2}
+                                    #::sut{:type :a
+                                           :bucket 2}])
+             (sut/run-iteration 2)
+             ::sim-engine/iteration))
+      "The run-iteration stops at the iteration asked")
+  (is (= #::sim-engine{:iteration 2
+                       :bucket 2
+                       :id 2}
+         (-> #::sim-engine{:sorter order-stub
+                           :event-registry {:a (fn [event-return _ _]
+                                                 (-> event-return
+                                                     (update-in [::sut/state :foo] (fnil inc 0))))}}
+             (sut/initial-snapshot 1
+                                   {}
+                                   [#::sut{:type :a
+                                           :bucket 2}
+                                    #::sut{:type :a
+                                           :bucket 2}
+                                    #::sut{:type :a
+                                           :bucket 2}])
+             (sut/run-iteration 2)
+             (select-keys [::sim-engine/iteration ::sim-engine/bucket ::sim-engine/id])))
+      "The run-iteration stops at the iteration asked"))

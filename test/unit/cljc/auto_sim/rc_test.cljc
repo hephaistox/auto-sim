@@ -27,13 +27,16 @@
    (= #::sim-engine{:state {::sim-engine/resource
                             {::test #::sim-engine{:capacity 1
                                                   :consumption {}
-                                                  :queue [#::sim-engine{:event {:event :seizing}
+                                                  :queue [#::sim-engine{:event
+                                                                        {:event :seizing
+                                                                         ::sim-engine/entity-id
+                                                                         :entity-id-stub}
                                                                         :priority :high
                                                                         :consumption-quantity 2}]
                                                   :renewable? true}}}}
       (-> {}
           (sut/define-resource nil 0 ::test {})
-          (sut/seize nil 3 ::test 2 {:event :seizing} :high)))
+          (sut/seize {::sim-engine/entity-id :entity-id-stub} 3 ::test 2 {:event :seizing} :high)))
    "Seizing an non-available resource postpones the event execution. So it is in the queue and not in the future-events")
   (is
    (= #::sim-engine{:state {::sim-engine/resource

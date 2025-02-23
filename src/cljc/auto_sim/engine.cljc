@@ -1,7 +1,7 @@
 (ns auto-sim.engine
   "The simulation engine is a `scheduler` working with a `model` describing the problem to solve.
 
-  The `initial-snapshot` updates the model with a snapshot to start with.
+  The `initial-snapshot` function updates the model with a snapshot to start with.
   Then, `continue` allows to execute this `model`. It is starting with a snapshot that can be coming from an `initial-snapshot` or another `continue` execution.
 
   An event execution has three parameters `(event-execution current-event event-bucket state new-future-events)`:
@@ -41,12 +41,13 @@
                             (assoc (on-previous-model stopping-criteria)
                                    ::sim-engine/past-events (conj past-events current-event)
                                    ::sim-engine/future-events rfuture-events))
-            stopping-criteria (and stopping-definition (sim-sc/eval stopping-definition model))]
+            stopping-criteria (and stopping-definition
+                                   (sim-sc/eval stopping-definition (on-previous-model nil)))]
         (cond
-          (seq stopping-criteria) (on-previous-model stopping-criteria)
           (empty? future-events) (-> [#::sim-engine{:id ::sim-engine/no-future-events
                                                     :doc ["No more future events to execute"]}]
                                      on-previous-model)
+          (seq stopping-criteria) (on-previous-model stopping-criteria)
           :else
           (let [{event-bucket ::sim-engine/bucket
                  event-type ::sim-engine/type}
@@ -118,14 +119,17 @@
 
 (defn- continue*
   [model]
-  (let [{::sim-engine/keys [event-registry sorter stopping-definition]} model]
-    (if-not (fn? sorter)
-      (-> model
-          (update ::sim-engine/stopping-criteria
-                  conj
-                  #::sim-engine{:id ::sim-engine/missing-sorter
-                                :doc ["Event sorter is not defined"]}))
-      (run-snapshot model sorter stopping-definition event-registry))))
+  (let [{::sim-engine/keys [event-registry sorter stopping-definition]} model
+        model (-> model
+                  (update ::sim-engine/iteration (fnil identity 0))
+                  (update ::sim-engine/id (fnil identity 0)))]
+    (cond
+      (not (fn? sorter)) (-> model
+                             (update ::sim-engine/stopping-criteria
+                                     conj
+                                     #::sim-engine{:id ::sim-engine/missing-sorter
+                                                   :doc ["Event sorter is not defined"]}))
+      :else (run-snapshot model sorter stopping-definition event-registry))))
 
 ;; ********************************************************************************
 ;; API
@@ -169,12 +173,17 @@
       (update ::sim-engine/past-events vec)
       (update ::sim-engine/stopping-criteria vec)))
 
+(defn reinit-sc
+  [model]
+  (assoc model ::sim-engine/stopping-definition (::sim-engine/cust-stopping-definition model)))
+
 (defn run [model] (continue model))
 
 (defn run-to
   "Run until time bucket `bucket`"
   [model bucket]
   (-> model
+      reinit-sc
       (sim-sc/stop-bucket bucket)
       continue))
 
@@ -182,16 +191,10 @@
   "Run until iteration `iteration`"
   [model iteration]
   (-> model
+      reinit-sc
       (sim-sc/stop-iteration iteration)
-      continue))
-
-(defn step-into
-  "Executes the next iteration only."
-  [model]
-  (-> model
+      continue
       (update ::sim-engine/stopping-criteria
-              conj
-              (sim-sc/stop-bucket (inc (::sim-engine/bucket model))))
-      continue))
+              (partial remove #(= ::sim-sc/iteration-stopping (::sim-engine/id %))))))
 
 (defn clean-stop-criteria [model] (dissoc model ::sim-engine/stopping-criteria))

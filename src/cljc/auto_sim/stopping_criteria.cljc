@@ -1,5 +1,5 @@
 (ns auto-sim.stopping-criteria
-  (:refer-clojure :exclude [eval])
+  (:refer-clojure :exclude [eval remove])
   (:require
    [auto-sim.engine :as-alias sim-engine]))
 
@@ -24,12 +24,11 @@
                       :context {:stopping-bucket stopping-bucket
                                 :snapshot-bucket snapshot-bucket}}))))
 
-
-
 (defn stop-iteration-sd
   [iteration]
   (fn [snapshot]
     (let [{snapshot-iteration ::sim-engine/iteration} snapshot]
+      ;;TODO Puis regarder pourquoi faire fonctionner les logs (or (nil? snapshot-iteration) (nil? iteration) (>= snapshot-iteration iteration))
       (when (or (nil? snapshot-iteration) (nil? iteration) (>= snapshot-iteration iteration))
         #::sim-engine{:doc (if (= iteration snapshot-iteration)
                              ["Stops at iteration %d as required" iteration]
@@ -37,8 +36,6 @@
                       :id ::iteration-stopping
                       :context {:stopping-iteration iteration
                                 :snapshot-iteration snapshot-iteration}}))))
-
-
 
 (defn stop-now-sd
   "Stops now."
@@ -98,3 +95,4 @@
               res))
           []
           stopping-fns))
+

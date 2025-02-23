@@ -41,6 +41,10 @@
   [entity-id event]
   (assoc event ::sim-engine/entity-id entity-id))
 
+(defn copy-entity-id
+  [source-event event]
+  (assoc event ::sim-engine/entity-id (::sim-engine/entity-id source-event)))
+
 (defn errors
   "Return `entity` with at least one error."
   [{::sim-engine/keys [entity]
@@ -143,7 +147,6 @@
                                             :why ::sim-engine/disposing-a-not-created-entity}))
                          (some? (::sim-engine/disposed old-entity))
                          (-> updated-entity
-                             ;;TODO Move to event-return
                              (clojure.core/update ::sim-engine/errors
                                                   (fnil conj [])
                                                   #::sim-engine{:bucket bucket

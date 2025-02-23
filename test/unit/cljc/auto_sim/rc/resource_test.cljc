@@ -124,7 +124,9 @@
         "Errors are returned"))
   (testing "Seizing with missing capacity returns `nil` consumption and adds it to the queue."
     (is (= {:resource #::sim-engine{:capacity 0
-                                    :queue [#::sim-engine{:event #::sim-engine{:a :b}
+                                    :queue [#::sim-engine{:event #::sim-engine{:a :b
+                                                                               :entity-id
+                                                                               :entity-uuid}
                                                           :priority :high
                                                           :consumption-quantity 1}]}}
            (sut/seize #::sim-engine{:capacity 0}
@@ -144,7 +146,9 @@
                       #::sim-engine{:a :b}))
         "An error is seizing is returned.")
     (is (= {:resource #::sim-engine{:capacity 12
-                                    :queue [#::sim-engine{:event #::sim-engine{:a :b}
+                                    :queue [#::sim-engine{:event #::sim-engine{:a :b
+                                                                               :entity-id
+                                                                               :entity-uuid}
                                                           :priority :high
                                                           :consumption-quantity 20}]}}
            (sut/seize #::sim-engine{:capacity 12}
@@ -230,12 +234,15 @@
 (deftest dispose-seize-test
   (is (= {:resource #::sim-engine{:consumption {}
                                   :capacity 1
-                                  :queue [#::sim-engine{:event #::sim-engine{:a :b2}
-                                                        :priority :high
-                                                        :consumption-quantity 2}
-                                          #::sim-engine{:event #::sim-engine{:a :b3}
-                                                        :priority :high
-                                                        :consumption-quantity 3}]}
+                                  :queue
+                                  [#::sim-engine{:event #::sim-engine{:a :b2
+                                                                      :entity-id :entity-uuid}
+                                                 :priority :high
+                                                 :consumption-quantity 2}
+                                   #::sim-engine{:event #::sim-engine{:a :b3
+                                                                      :entity-id :entity-uuid}
+                                                 :priority :high
+                                                 :consumption-quantity 3}]}
           :events []}
          (-> #::sim-engine{:capacity 1}
              (sut/seize #::sim-engine{:entity-id :entity-uuid} 1 :high #::sim-engine{:a :b1})
@@ -246,12 +253,15 @@
              :resource
              (sut/dispose (sim-rc-consumption/compare-by-order []) fifo 1)))
       "Disposing 1 which is not enough for next event")
-  (is (= {:events [#::sim-engine{:event #::sim-engine{:a :b2}
+  (is (= {:events [#::sim-engine{:event #::sim-engine{:a :b2
+                                                      :entity-id :entity-uuid}
                                  :priority :high
                                  :consumption-quantity 2}]
           :resource #::sim-engine{:consumption {}
                                   :capacity 2
-                                  :queue [#::sim-engine{:event #::sim-engine{:a :b3}
+                                  :queue [#::sim-engine{:event #::sim-engine{:a :b3
+                                                                             :entity-id
+                                                                             :entity-uuid}
                                                         :priority :high
                                                         :consumption-quantity 3}]}}
          (-> #::sim-engine{:capacity 2}
