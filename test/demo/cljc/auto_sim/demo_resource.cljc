@@ -23,30 +23,22 @@
 
 (def model-data
   #::sim-engine{:starting-bucket 0
+                ::resource-input {:m1 {}
+                                  :m2 {}
+                                  :m3 {}
+                                  :m4 {}}
                 :waiting-time 0
                 :max-nb-entity 2
-                :routes {:blue [{:m :transp
-                                 :pt 5}
-                                {:m :m4
+                :routes {:blue [{:m :m4
                                  :pt 1}
-                                {:m :transp
-                                 :pt 4}
                                 {:m :m2
                                  :pt 3}
-                                {:m :transp
-                                 :pt 7}
                                 {:m :m1
                                  :pt 2}]
-                         :purple [{:m :transp
-                                   :pt 5}
-                                  {:m :m4
+                         :purple [{:m :m4
                                    :pt 1}
-                                  {:m :transp
-                                   :pt 4}
                                   {:m :m3
                                    :pt 3}
-                                  {:m :transp
-                                   :pt 4}
                                   {:m :m1
                                    :pt 1}]}
                 ::seed #uuid "e85427c1-ed25-4ed4-9b11-52238d268265"})
@@ -77,17 +69,19 @@
                  (sim-entity/schedule event bucket #::sim-engine{:type :PT}))))
      :IS
      (fn [event-return event bucket]
-       (let [evt
+       (let [{:keys [m pt]} (::sim-engine/current-operation event)
+             evt
              (sim-route/add-current-operation event-return event bucket #::sim-engine{:type :MP})]
          (-> event-return
-             (sim-rc/seize event bucket ::machine 1 evt :high))))
+             (sim-rc/seize event bucket m 1 evt :high))))
      :MP (fn [event-return event bucket]
            (-> event-return
                (sim-machine/infinite-capacity event bucket #::sim-engine{:type :OS} :pt)))
      :OS (fn [event-return event bucket]
-           (-> event-return
-               (sim-rc/dispose event bucket ::machine 1 fifo prio)
-               (sim-route/schedule event bucket #::sim-engine{:type :MT})))
+           (let [{:keys [m pt]} (::sim-engine/current-operation event)]
+             (-> event-return
+                 (sim-rc/dispose event bucket m 1 fifo prio)
+                 (sim-route/schedule event bucket #::sim-engine{:type :MT}))))
      :MT (fn [event-return event bucket]
            (if-let [route (sim-route/get-route event-return event bucket)]
              (-> event-return
@@ -103,7 +97,10 @@
         evt1 (sim-entity/n-entities-event starting-bucket max-nb-entity waiting-time :CE)]
     (assoc (-> model-data
                (sim-engine/initial-snapshot starting-bucket {} [evt1])
-               (sim-rc/define-resource nil nil ::machine {}))
+               (sim-rc/define-resource nil nil :m1 {})
+               (sim-rc/define-resource nil nil :m2 {})
+               (sim-rc/define-resource nil nil :m3 {})
+               (sim-rc/define-resource nil nil :m4 {}))
            ::sim-engine/sorter (sim-ordering/sorter (sim-ordering/fields ::sim-engine/bucket)
                                                     (sim-ordering/types
                                                      [:CE :PS :IS :MP :OS :MT :PT])
@@ -126,8 +123,6 @@
                  sim-engine/run)
              ::sim-engine/past-events
              count))))
-
-#_(defn uuid-idx [_ x] x)
 
 (defn past-events
   [model entity-translation]
@@ -171,7 +166,7 @@
 
 (defn event*
   [event entity-translation]
-  (let [{::sim-engine/keys [type _bucket entity-id route-id current-operation]
+  (let [{::sim-engine/keys [type bucket entity-id _route-id current-operation]
          ::sim-entity/keys [waiting-time nb-entity max-nb-entity]}
         event
         {:keys [m pt]} current-operation]
@@ -193,7 +188,8 @@
                    :OS [", e(" (uuid-idx entity-translation entity-id) ") ends production on " m]
                    :MT [", e(" (uuid-idx entity-translation entity-id) ") quits machine " m]
                    :PT [", ends product e(" (uuid-idx entity-translation entity-id) ")"]
-                   []))
+                   [])
+                 [", ends in " bucket " bucket"])
          (apply str)
          println)))
 

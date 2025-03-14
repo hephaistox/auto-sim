@@ -65,3 +65,10 @@
   [event-return event bucket new-event]
   (let [new-event (add-current-operation event-return event bucket new-event)]
     (sim-entity/schedule event-return event bucket new-event)))
+
+(defn machines
+  [model-data]
+  (->> (::sim-engine/routes model-data)
+       (mapcat second)
+       (map :m)
+       distinct))
