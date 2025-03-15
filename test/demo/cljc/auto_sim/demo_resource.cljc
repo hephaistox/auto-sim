@@ -69,7 +69,7 @@
                  (sim-entity/schedule event bucket #::sim-engine{:type :PT}))))
      :IS
      (fn [event-return event bucket]
-       (let [{:keys [m pt]} (::sim-engine/current-operation event)
+       (let [{:keys [m _pt]} (::sim-engine/current-operation event)
              evt
              (sim-route/add-current-operation event-return event bucket #::sim-engine{:type :MP})]
          (-> event-return
@@ -78,7 +78,7 @@
            (-> event-return
                (sim-machine/infinite-capacity event bucket #::sim-engine{:type :OS} :pt)))
      :OS (fn [event-return event bucket]
-           (let [{:keys [m pt]} (::sim-engine/current-operation event)]
+           (let [{:keys [m _pt]} (::sim-engine/current-operation event)]
              (-> event-return
                  (sim-rc/dispose event bucket m 1 fifo prio)
                  (sim-route/schedule event bucket #::sim-engine{:type :MT}))))
@@ -153,7 +153,7 @@
 
 (defn snapshot
   [model]
-  (let [{::sim-engine/keys [bucket id iteration]} model]
+  (let [{::sim-engine/keys [bucket _id iteration]} model]
     (println (str "Iteration " iteration ", bucket " bucket)))
   model)
 
@@ -161,8 +161,6 @@
   [model]
   (let [{::sim-engine/keys [bucket iteration]} model] (print (str iteration " t(" bucket ") ")))
   model)
-
-
 
 (defn event*
   [event entity-translation]
@@ -217,31 +215,30 @@
       (event* entity-translation))
   model)
 
-(defn errors
-  [model]
-  (let [{::sim-engine/keys [stopping-criteria]} model]
-    (if (seq stopping-criteria)
-      (doseq [{::sim-engine/keys [doc]} stopping-criteria] (when doc (println (apply format doc))))
-      model)))
-
-(let [entity-translation (sim-printer-rc-entity-route/create-translation)]
-  (reduce (fn [model i]
-            (if (seq (::sim-engine/stopping-criteria model))
-              model
-              (some-> model
-                      (sim-engine/run-iteration i)
-                      separator
-                      snapshot
-                      errors
-                      ;(entities entity-translation)
-                      (resources entity-translation)
-                      (next-event entity-translation))))
-          (create-model model-data)
-          (range 1 100)))
-
-(-> model-data
-    create-model
-    (sim-engine/run-iteration 9))
+#?(:cljc (do (defn errors
+               [model]
+               (let [{::sim-engine/keys [stopping-criteria]} model]
+                 (if (seq stopping-criteria)
+                   (doseq [{::sim-engine/keys [doc]} stopping-criteria]
+                     (when doc (println (apply format doc))))
+                   model)))
+             (let [entity-translation (sim-printer-rc-entity-route/create-translation)]
+               (reduce (fn [model i]
+                         (if (seq (::sim-engine/stopping-criteria model))
+                           model
+                           (some-> model
+                                   (sim-engine/run-iteration i)
+                                   separator
+                                   snapshot
+                                   errors
+                                   ;(entities entity-translation)
+                                   (resources entity-translation)
+                                   (next-event entity-translation))))
+                       (create-model model-data)
+                       (range 1 100)))
+             (-> model-data
+                 create-model
+                 (sim-engine/run-iteration 9))))
 
 (comment
  ;

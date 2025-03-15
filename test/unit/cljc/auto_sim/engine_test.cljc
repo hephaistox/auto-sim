@@ -3,7 +3,6 @@
    [auto-sim.engine   :as sut]
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [auto-sim.engine   :as sim-engine]
    [auto-sim.ordering :as sim-ordering]))
 
 ;; ********************************************************************************
@@ -283,10 +282,10 @@
 
 (deftest run-iteration-test
   (is (= 2
-         (-> #::sim-engine{:sorter order-stub
-                           :event-registry {:a (fn [event-return _ _]
-                                                 (-> event-return
-                                                     (update-in [::sut/state :foo] (fnil inc 0))))}}
+         (-> #::sut{:sorter order-stub
+                    :event-registry {:a (fn [event-return _ _]
+                                          (-> event-return
+                                              (update-in [::sut/state :foo] (fnil inc 0))))}}
              (sut/initial-snapshot 1
                                    {}
                                    [#::sut{:type :a
@@ -296,15 +295,15 @@
                                     #::sut{:type :a
                                            :bucket 2}])
              (sut/run-iteration 2)
-             ::sim-engine/iteration))
+             ::sut/iteration))
       "The run-iteration stops at the iteration asked")
-  (is (= #::sim-engine{:iteration 2
-                       :bucket 2
-                       :id 2}
-         (-> #::sim-engine{:sorter order-stub
-                           :event-registry {:a (fn [event-return _ _]
-                                                 (-> event-return
-                                                     (update-in [::sut/state :foo] (fnil inc 0))))}}
+  (is (= #::sut{:iteration 2
+                :bucket 2
+                :id 2}
+         (-> #::sut{:sorter order-stub
+                    :event-registry {:a (fn [event-return _ _]
+                                          (-> event-return
+                                              (update-in [::sut/state :foo] (fnil inc 0))))}}
              (sut/initial-snapshot 1
                                    {}
                                    [#::sut{:type :a
@@ -314,5 +313,5 @@
                                     #::sut{:type :a
                                            :bucket 2}])
              (sut/run-iteration 2)
-             (select-keys [::sim-engine/iteration ::sim-engine/bucket ::sim-engine/id])))
+             (select-keys [::sut/iteration ::sut/bucket ::sut/id])))
       "The run-iteration stops at the iteration asked"))
