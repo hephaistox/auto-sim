@@ -1,21 +1,16 @@
 (ns auto-sim.simulation-engine.impl.built-in-sd.registry
   "built-in `stopping-definition` can create `stopping-cause` but they are not accessible for modellers, they are hard coded."
   (:require
-   [automaton-core.adapters.schema                                                    :as
-                                                                                      core-schema]
-   [automaton-core.utils.map                                                          :as utils-map]
-   [auto-sim.simulation-engine                                         :as-alias
-                                                                                      sim-engine]
-   [auto-sim.simulation-engine.impl.built-in-sd.causality-broken
-    :as sim-de-causality-broken]
-   [auto-sim.simulation-engine.impl.built-in-sd.execution-not-found
-    :as sim-de-execution-not-found]
-   [auto-sim.simulation-engine.impl.built-in-sd.failed-event-execution
-    :as sim-failed-event-execution]
-   [auto-sim.simulation-engine.impl.built-in-sd.no-future-events
-    :as sim-de-no-future-events]
-   [auto-sim.simulation-engine.impl.stopping.definition
-    :as sim-de-sc-definition]))
+   [auto-sim.simulation-engine                                         :as-alias sim-engine]
+   [auto-sim.simulation-engine.impl.built-in-sd.causality-broken       :as sim-de-causality-broken]
+   [auto-sim.simulation-engine.impl.built-in-sd.execution-not-found    :as
+                                                                       sim-de-execution-not-found]
+   [auto-sim.simulation-engine.impl.built-in-sd.failed-event-execution :as
+                                                                       sim-failed-event-execution]
+   [auto-sim.simulation-engine.impl.built-in-sd.no-future-events       :as sim-de-no-future-events]
+   [auto-sim.simulation-engine.impl.stopping.definition                :as sim-de-sc-definition]
+   [automaton-core.adapters.schema                                     :as core-schema]
+   [automaton-core.utils.map                                           :as utils-map]))
 
 (def schema [:map-of sim-de-sc-definition/id-schema sim-de-sc-definition/schema])
 

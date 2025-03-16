@@ -10,14 +10,12 @@
     :as _params}]
   (let [snapshot-iteration (get snapshot ::sim-engine/iteration 0)]
     #:auto-sim.simulation-engine{:stop? (or (nil? n) (>= snapshot-iteration n))
-                                                :context
-                                                #:auto-sim.simulation-engine{:iteration
-                                                                                            snapshot-iteration
-                                                                                            :n n}}))
+                                 :context #:auto-sim.simulation-engine{:iteration snapshot-iteration
+                                                                       :n n}}))
 
 (defn stopping-definition
   []
   #:auto-sim.simulation-engine{:doc "Stops when the iteration `n` is reached."
-                                              :id ::sim-engine/iteration-nth
-                                              :next-possible? true
-                                              :stopping-evaluation stop-nth})
+                               :id ::sim-engine/iteration-nth
+                               :next-possible? true
+                               :stopping-evaluation stop-nth})

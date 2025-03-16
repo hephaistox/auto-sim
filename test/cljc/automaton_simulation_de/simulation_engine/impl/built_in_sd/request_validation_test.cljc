@@ -2,10 +2,9 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-core.adapters.schema                                                :as core-schema]
    [auto-sim.simulation-engine.impl.built-in-sd.request-validation :as sut]
-   [auto-sim.simulation-engine.impl.stopping.definition
-    :as sim-de-sc-definition]))
+   [auto-sim.simulation-engine.impl.stopping.definition            :as sim-de-sc-definition]
+   [automaton-core.adapters.schema                                 :as core-schema]))
 
 (deftest stopping-definition-test
   (is (= nil

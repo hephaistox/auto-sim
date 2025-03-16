@@ -2,8 +2,8 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                         :as core-schema]
-   [auto-sim.simulation-engine.event-return :as sut]))
+   [auto-sim.simulation-engine.event-return :as sut]
+   [automaton-core.adapters.schema          :as core-schema]))
 
 (deftest schema-test
   (testing "event return has a valid schema"

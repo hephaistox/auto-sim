@@ -3,10 +3,10 @@
    Predicate functions can be expressed via a query language represented with vector.
    This namespace is about managing that language"
   (:require
-   [automaton-core.adapters.schema                         :as core-schema]
    [auto-sim.predicates.composed-predicates :as sim-pred-composed]
    [auto-sim.predicates.equality-predicates :as sim-pred-equality]
-   [clojure.walk                                           :as walk]))
+   [automaton-core.adapters.schema          :as core-schema]
+   [clojure.walk                            :as walk]))
 
 (def pred-lang-schema
   "Predicate vector language consists of :keyword represnting the name of predicate and zero or more parameters for that predicate

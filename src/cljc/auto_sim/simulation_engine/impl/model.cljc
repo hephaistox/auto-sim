@@ -11,8 +11,7 @@
   * `stopping-criterias` list of `stopping-criteria` that defines the end of the model."
   (:require
    [auto-sim.simulation-engine                          :as-alias sim-engine]
-   [auto-sim.simulation-engine.impl.middleware.registry :as
-                                                                       sim-de-middleware-registry]
+   [auto-sim.simulation-engine.impl.middleware.registry :as sim-de-middleware-registry]
    [auto-sim.simulation-engine.impl.middlewares         :as sim-de-middlewares]
    [auto-sim.simulation-engine.impl.model-data          :as sim-de-model-data]
    [auto-sim.simulation-engine.impl.registry            :as sim-de-registry]
@@ -48,15 +47,14 @@
                               (map sim-de-ordering/data-to-fn)
                               (filterv some?))]
     #:auto-sim.simulation-engine{:registry registry
-                                                :middlewares updated-middlewares
-                                                :model-data model-data
-                                                :stopping-criterias updated-scs
-                                                :ordering updated-ordering
-                                                :initial-snapshot
-                                                {::sim-engine/id 1
-                                                 ::sim-engine/iteration 1
-                                                 ::sim-engine/date initial-bucket
-                                                 ::sim-engine/state {}
-                                                 ::sim-engine/past-events []
-                                                 ::sim-engine/future-events
-                                                 (if (empty? future-events) [] future-events)}}))
+                                 :middlewares updated-middlewares
+                                 :model-data model-data
+                                 :stopping-criterias updated-scs
+                                 :ordering updated-ordering
+                                 :initial-snapshot {::sim-engine/id 1
+                                                    ::sim-engine/iteration 1
+                                                    ::sim-engine/date initial-bucket
+                                                    ::sim-engine/state {}
+                                                    ::sim-engine/past-events []
+                                                    ::sim-engine/future-events
+                                                    (if (empty? future-events) [] future-events)}}))

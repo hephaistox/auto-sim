@@ -2,15 +2,11 @@
   "Stops when the request is valid through inconsistency and schema.
   This criteria is built-in to this middleware as it is requiring the `request` knowledge. User `stopping-criteria` knows only `snapshot`."
   (:require
-   [automaton-core.adapters.schema                                                :as core-schema]
-   [auto-sim.simulation-engine                                     :as-alias
-                                                                                  sim-engine]
-   [auto-sim.simulation-engine.impl.built-in-sd.request-validation
-    :as sim-de-request-validation]
-   [auto-sim.simulation-engine.request                             :as
-                                                                                  sim-de-request]
-   [auto-sim.simulation-engine.snapshot                            :as
-                                                                                  sim-de-snapshot]))
+   [auto-sim.simulation-engine                                     :as-alias sim-engine]
+   [auto-sim.simulation-engine.impl.built-in-sd.request-validation :as sim-de-request-validation]
+   [auto-sim.simulation-engine.request                             :as sim-de-request]
+   [auto-sim.simulation-engine.snapshot                            :as sim-de-snapshot]
+   [automaton-core.adapters.schema                                 :as core-schema]))
 
 (defn evaluates
   [{::sim-engine/keys [snapshot current-event]

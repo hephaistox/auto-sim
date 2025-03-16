@@ -2,12 +2,12 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.utils.map                               :as utils-map]
    [auto-sim.rc                             :as sut]
    [auto-sim.rc.impl.resource               :as sim-de-rc-resource]
    [auto-sim.rc.impl.state-test             :as sim-de-rc-state-test]
    [auto-sim.simulation-engine              :as-alias sim-engine]
-   [auto-sim.simulation-engine.event-return :as sim-de-event-return]))
+   [auto-sim.simulation-engine.event-return :as sim-de-event-return]
+   [automaton-core.utils.map                :as utils-map]))
 
 (defn- default-resource-event-return
   ([resource-name] (default-resource-event-return resource-name nil))
@@ -15,7 +15,7 @@
    (let [resource (cond-> (sim-de-rc-resource/defaulting-values nil {} {})
                     (not (nil? capacity)) (assoc ::sut/capacity capacity))]
      #:auto-sim.simulation-engine{:state {::sut/resource {resource-name resource}}
-                                                 :future-events []})))
+                                  :future-events []})))
 
 (defn uncache
   "For test purposes, remove cache values."
@@ -68,7 +68,7 @@
         (-> (-> (default-resource-event-return ::test)
                 (sut/seize ::test 2
                            1 #:auto-sim.simulation-engine{:type :a
-                                                                         :date 1}))
+                                                          :date 1}))
             ::sim-engine/state
             ::sut/resource
             ::test
@@ -78,10 +78,9 @@
     (is (= 2
            (-> (default-resource-event-return ::test 0)
                (sim-de-event-return/add-events [#:auto-sim.simulation-engine{:type :a
-                                                                                            :date 1}
+                                                                             :date 1}
                                                 #:auto-sim.simulation-engine{:type :b
-                                                                                            :date
-                                                                                            2}])
+                                                                             :date 2}])
                (sut/seize ::test 1 1 {:a :b})
                ::sim-engine/future-events
                count))
@@ -91,11 +90,11 @@
      (= 4
         (-> (default-resource-event-return ::test 20)
             (sim-de-event-return/add-events [#:auto-sim.simulation-engine{:type :a
-                                                                                         :date 5}
+                                                                          :date 5}
                                              #:auto-sim.simulation-engine{:type :b
-                                                                                         :date 2}
+                                                                          :date 2}
                                              #:auto-sim.simulation-engine{:type :c
-                                                                                         :date 4}])
+                                                                          :date 4}])
             (sut/seize ::test 1 1 {:a :b})
             ::sim-engine/future-events
             count))
@@ -103,7 +102,7 @@
     (is (-> (default-resource-event-return ::test 10)
             (sut/seize ::test 1
                        1 #:auto-sim.simulation-engine{:type :a
-                                                                     :date 1})
+                                                      :date 1})
             ::sim-engine/future-events
             first
             ::sut/resource
@@ -112,16 +111,16 @@
         "When seizing an available resource, the future-events is containing the consumption-uuid"))
   (is (= 3
          (-> (sut/seize (-> (default-resource-event-return ::test 0)
-                            (sim-de-event-return/add-events
-                             [#:auto-sim.simulation-engine{:type :a
-                                                                          :date 5}
-                              #:auto-sim.simulation-engine{:type :c
-                                                                          :date 2}
-                              #:auto-sim.simulation-engine{:type :a
-                                                                          :date 4}]))
+                            (sim-de-event-return/add-events [#:auto-sim.simulation-engine{:type :a
+                                                                                          :date 5}
+                                                             #:auto-sim.simulation-engine{:type :c
+                                                                                          :date 2}
+                                                             #:auto-sim.simulation-engine{:type :a
+                                                                                          :date
+                                                                                          4}]))
                         ::test 1
                         1 #:auto-sim.simulation-engine{:type :a
-                                                                      :date 1})
+                                                       :date 1})
              ::sim-engine/future-events
              count))
       "Seizing a non available event doesn't generates it, so it creates no new future-event"))
@@ -131,63 +130,49 @@
          (sut/dispose {}
                       ::a
                       #:auto-sim.simulation-engine{:type :a
-                                                                  :date 1}))
+                                                   :date 1}))
       "Disposing a non existing resource is noop")
-  (is
-   (=
-    #:auto-sim.simulation-engine{:state #::sut{:resource
-                                                              {::test #::sut{:currently-consuming {}
+  (is (= #:auto-sim.simulation-engine{:state #::sut{:resource {::test #::sut{:currently-consuming {}
                                                                              :queue []}}}
-                                                :future-events []}
-    (-> #:auto-sim.simulation-engine{:state
-                                                    #::sut{:resource
-                                                           {::test
-                                                            #::sut{:currently-consuming
-                                                                   {1 #::sut{:seizing-event {:a :b}
-                                                                             :consumed-quantity 1}}
-                                                                   :queue []}}}
-                                                    :future-events []}
-        (dispose-cacheproof ::test {::sut/resource {::test 1}})))
-   "Disposing an existing resource, currently consuming is removing it")
+                                      :future-events []}
+         (-> #:auto-sim.simulation-engine{:state #::sut{:resource
+                                                        {::test
+                                                         #::sut{:currently-consuming
+                                                                {1 #::sut{:seizing-event {:a :b}
+                                                                          :consumed-quantity 1}}
+                                                                :queue []}}}
+                                          :future-events []}
+             (dispose-cacheproof ::test {::sut/resource {::test 1}})))
+      "Disposing an existing resource, currently consuming is removing it")
   (is
    (=
     #:auto-sim.simulation-engine{:state
-                                                #::sut{:resource
-                                                       {::test
-                                                        #::sut{:currently-consuming
-                                                               {1
-                                                                #::sut{:seizing-event
-                                                                       #:auto-sim.simulation-engine{:type
-                                                                                                                   :a
-                                                                                                                   :date
-                                                                                                                   2}
-                                                                       :consumed-quantity 2}}
-                                                               :capacity 3
-                                                               :preemption-policy
-                                                               ::sut/no-preemption
-                                                               :renewable? true
-                                                               :unblocking-policy ::sut/FIFO
-                                                               :queue
-                                                               [#::sut{:seizing-event
-                                                                       #:auto-sim.simulation-engine{:type
-                                                                                                                   :b
-                                                                                                                   :date
-                                                                                                                   2}
-                                                                       :consumed-quantity 3}]}}}
-                                                :future-events
-                                                [#:auto-sim.simulation-engine{:type
-                                                                                             :a
-                                                                                             :date 2
-                                                                                             ::sut/resource
-                                                                                             {::test
+                                 #::sut{:resource
+                                        {::test
+                                         #::sut{:currently-consuming
+                                                {1 #::sut{:seizing-event
+                                                          #:auto-sim.simulation-engine{:type :a
+                                                                                       :date 2}
+                                                          :consumed-quantity 2}}
+                                                :capacity 3
+                                                :preemption-policy ::sut/no-preemption
+                                                :renewable? true
+                                                :unblocking-policy ::sut/FIFO
+                                                :queue [#::sut{:seizing-event
+                                                               #:auto-sim.simulation-engine{:type :b
+                                                                                            :date 2}
+                                                               :consumed-quantity 3}]}}}
+                                 :future-events [#:auto-sim.simulation-engine{:type :a
+                                                                              :date 2
+                                                                              ::sut/resource {::test
                                                                                               1}}]}
     (let [event-return (-> (default-resource-event-return ::test 3)
                            (sut/seize ::test 2
                                       2 #:auto-sim.simulation-engine{:type :a
-                                                                                    :date 2})
+                                                                     :date 2})
                            (sut/seize ::test 3
                                       2 #:auto-sim.simulation-engine{:type :b
-                                                                                    :date 2}))
+                                                                     :date 2}))
           a-currently-consuming-event (-> event-return
                                           ::sim-engine/future-events
                                           first)]
@@ -197,23 +182,20 @@
    "Disposing a resource with blocked events release them"))
 
 (deftest resource-update-test
-  (is (= #:auto-sim.simulation-engine{:state #::sut{:resource {::test
-                                                                              #::sut{:capacity 7
-                                                                                     :queue []}}}
-                                                     :future-events []}
+  (is (= #:auto-sim.simulation-engine{:state #::sut{:resource {::test #::sut{:capacity 7
+                                                                             :queue []}}}
+                                      :future-events []}
          (resource-update-cacheproof #:auto-sim.simulation-engine{:state {}
-                                                                                 :future-events []}
+                                                                  :future-events []}
                                      ::test
                                      7))
       "Non existing resource is created")
-  (is (= #:auto-sim.simulation-engine{:state #::sut{:resource {::test
-                                                                              #::sut{:capacity 7
-                                                                                     :queue []}}}
-                                                     :future-events []}
-         (-> #:auto-sim.simulation-engine{:state #::sut{:resource
-                                                                       {::test #::sut{:capacity 5
-                                                                                      :queue []}}}
-                                                         :future-events []}
+  (is (= #:auto-sim.simulation-engine{:state #::sut{:resource {::test #::sut{:capacity 7
+                                                                             :queue []}}}
+                                      :future-events []}
+         (-> #:auto-sim.simulation-engine{:state #::sut{:resource {::test #::sut{:capacity 5
+                                                                                 :queue []}}}
+                                          :future-events []}
              (resource-update-cacheproof ::test 7)))
       "Existing resource is updated"))
 

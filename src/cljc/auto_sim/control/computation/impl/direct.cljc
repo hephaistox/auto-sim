@@ -36,10 +36,9 @@
             it-snapshot (if (<= it 1)
                           (::sim-engine/initial-snapshot model)
                           (-> model
-                              (sim-engine/scheduler
-                               []
-                               [[::sim-engine/iteration-nth
-                                 #:auto-sim.simulation-engine{:n (dec it)}]])
+                              (sim-engine/scheduler []
+                                                    [[::sim-engine/iteration-nth
+                                                      #:auto-sim.simulation-engine{:n (dec it)}]])
                               ::sim-engine/snapshot))]
         (loop [snapshot it-snapshot
                endless-catch-internal-counter 0]

@@ -23,7 +23,7 @@
     (update ::sim-rc/queue
             (fnil #(conj %
                          #:auto-sim.rc{:seizing-event event
-                                                      ::sim-rc/consumed-quantity consumed-quantity})
+                                       ::sim-rc/consumed-quantity consumed-quantity})
                   []))))
 
 (defn unqueue-event

@@ -2,9 +2,9 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-optimization.prng               :as opt-prng]
-   [auto-sim.demo.entity       :as sut]
-   [auto-sim.simulation-engine :as sim-engine]))
+   [auto-sim.demo.entity        :as sut]
+   [auto-sim.simulation-engine  :as sim-engine]
+   [automaton-optimization.prng :as opt-prng]))
 
 (deftest validation-test
   (is (nil? (sim-engine/validate-model (sut/model))))

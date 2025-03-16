@@ -1,9 +1,9 @@
 (ns auto-sim.predicates.equality-predicates
   "Equality predicates compare values and return boolean based on the result"
   (:require
-   [automaton-core.adapters.schema                :as core-schema]
    [auto-sim.predicates            :as-alias sim-pred]
-   [auto-sim.predicates.impl.utils :as sim-trans-utils]))
+   [auto-sim.predicates.impl.utils :as sim-trans-utils]
+   [automaton-core.adapters.schema :as core-schema]))
 
 (defn- in?
   "Return true if `value` is equal to one of values in `vs`, false otherwise"

@@ -7,11 +7,11 @@
   "Stops now."
   [_snapshot _params]
   #:auto-sim.simulation-engine{:stop? true
-                                              :context nil})
+                               :context nil})
 
 (defn stopping-definition
   []
   #:auto-sim.simulation-engine{:doc "Criteria to stop right now."
-                                              :id ::sim-engine/stop-now
-                                              :next-possible? true
-                                              :stopping-evaluation stop-now})
+                               :id ::sim-engine/stop-now
+                               :next-possible? true
+                               :stopping-evaluation stop-now})

@@ -8,7 +8,5 @@
 
 (defn build
   []
-  #:auto-sim.simulation-engine{:compare-field {:comparison-fn
-                                                              sim-de-ordering/compare-field}
-                                              :compare-types {:comparison-fn
-                                                              sim-de-ordering/compare-types}})
+  #:auto-sim.simulation-engine{:compare-field {:comparison-fn sim-de-ordering/compare-field}
+                               :compare-types {:comparison-fn sim-de-ordering/compare-types}})

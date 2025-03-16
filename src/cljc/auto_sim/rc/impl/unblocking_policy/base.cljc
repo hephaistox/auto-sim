@@ -1,5 +1,4 @@
-(ns auto-sim.rc.impl.unblocking-policy.base
-  "The simple policies to unblock an event in the queue.")
+(ns auto-sim.rc.impl.unblocking-policy.base "The simple policies to unblock an event in the queue.")
 
 (defn fifo-policy
   "Select the first blocked consumer in the queue."

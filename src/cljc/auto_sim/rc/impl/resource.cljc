@@ -11,12 +11,10 @@
   * `unblocking-policy` (default ::simde-rc/FIFO) refers to an entity from the `auto-sim.rc.policies` registry, that registry will allow to pick one element in a queue."
   (:require
    [auto-sim.rc                                :as-alias sim-rc]
-   [auto-sim.rc.impl.preemption-policy.factory :as
-                                                              sim-de-rc-preemption-policy-factory]
+   [auto-sim.rc.impl.preemption-policy.factory :as sim-de-rc-preemption-policy-factory]
    [auto-sim.rc.impl.resource.consumption      :as sim-de-rc-consumption]
    [auto-sim.rc.impl.resource.queue            :as sim-de-rc-queue]
-   [auto-sim.rc.impl.unblocking-policy.factory :as
-                                                              sim-de-rc-unblocking-policy-factory]))
+   [auto-sim.rc.impl.unblocking-policy.factory :as sim-de-rc-unblocking-policy-factory]))
 
 (defn defaulting-values
   "Returns a resource with default values added."

@@ -1,8 +1,8 @@
 (ns auto-sim.predicates.composed-predicates
   "Composed predicates accept other predicates and return value based on their value"
   (:require
-   [automaton-core.adapters.schema     :as core-schema]
-   [auto-sim.predicates :as-alias sim-pred]))
+   [auto-sim.predicates            :as-alias sim-pred]
+   [automaton-core.adapters.schema :as core-schema]))
 
 (defn not-fn
   "Returns true if `pred-fn` evaluates to false. Otherwise returns false."

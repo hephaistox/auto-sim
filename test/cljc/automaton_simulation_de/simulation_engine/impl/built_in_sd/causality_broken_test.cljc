@@ -2,14 +2,11 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-core.adapters.schema                                              :as core-schema]
-   [auto-sim.simulation-engine                                   :as-alias
-                                                                                sim-engine]
+   [auto-sim.simulation-engine                                   :as-alias sim-engine]
    [auto-sim.simulation-engine.impl.built-in-sd.causality-broken :as sut]
-   [auto-sim.simulation-engine.impl.stopping.cause
-    :as sim-de-stopping-cause]
-   [auto-sim.simulation-engine.impl.stopping.definition
-    :as sim-de-sc-definition]))
+   [auto-sim.simulation-engine.impl.stopping.cause               :as sim-de-stopping-cause]
+   [auto-sim.simulation-engine.impl.stopping.definition          :as sim-de-sc-definition]
+   [automaton-core.adapters.schema                               :as core-schema]))
 
 (deftest stopping-definition-test
   (is (= nil
@@ -18,7 +15,7 @@
 
 (def event-stub
   #:auto-sim.simulation-engine{:type :a
-                                              :date 1})
+                               :date 1})
 
 (deftest evaluates-test
   (is (= nil

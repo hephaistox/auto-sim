@@ -1,20 +1,19 @@
 (ns auto-sim.control.computation.impl.chunk
   "Loads chunk of scheduler responses upfront"
   (:require
-   [automaton-core.adapters.schema                                   :as core-schema]
    [auto-sim.control                                  :as-alias sim-de-control]
    [auto-sim.control.computation                      :as sim-de-computation]
    [auto-sim.control.computation.response             :as sim-de-comp-response]
    [auto-sim.simulation-engine                        :as sim-engine]
-   [auto-sim.simulation-engine.impl.stopping.criteria :as sim-de-criteria]))
+   [auto-sim.simulation-engine.impl.stopping.criteria :as sim-de-criteria]
+   [automaton-core.adapters.schema                    :as core-schema]))
 
 (defn create-storage
   ([model]
    (create-storage model
                    {1 #:auto-sim.simulation-engine{:stopping-causes []
-                                                                  :snapshot
-                                                                  (::sim-engine/initial-snapshot
-                                                                   model)}}))
+                                                   :snapshot (::sim-engine/initial-snapshot
+                                                              model)}}))
   ([model iterations]
    (atom {:model model
           :no-next false
@@ -121,9 +120,9 @@
                                                                             %))
                                            (every? true?))]
         (if (not stopping-criterias-valid?)
-          (sim-de-comp-response/build
-           :internal-error
-           #:auto-sim.simulation-engine{:stopping-criterias stopping-criterias})
+          (sim-de-comp-response/build :internal-error
+                                      #:auto-sim.simulation-engine{:stopping-criterias
+                                                                   stopping-criterias})
           (do
             (when (>= (+ it chunk-size) max-it) (load-chunk! storage (+ chunk-size (- it max-it))))
             (if-let [response (-> (fn [[k v]]

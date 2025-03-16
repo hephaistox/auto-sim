@@ -2,15 +2,14 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-core.adapters.schema                                         :as core-schema]
    [auto-sim.simulation-engine                              :as-alias sim-engine]
    [auto-sim.simulation-engine.impl.stopping-definition.now :as sut]
-   [auto-sim.simulation-engine.impl.stopping.definition     :as
-                                                                           sim-de-sc-definition]))
+   [auto-sim.simulation-engine.impl.stopping.definition     :as sim-de-sc-definition]
+   [automaton-core.adapters.schema                          :as core-schema]))
 
 (deftest stop-now-test
   (is (= #:auto-sim.simulation-engine{:stop? true
-                                                     :context nil}
+                                      :context nil}
          (sut/stop-now nil nil))))
 
 (deftest stopping-definition-test

@@ -3,10 +3,10 @@
 
   * [See entity](docs/archi/middlewares_entity.png)"
   (:require
-   [automaton-core.adapters.schema                       :as core-schema]
-   [automaton-core.utils.sequences                       :as core-sequences]
    [auto-sim.simulation-engine            :as-alias sim-engine]
-   [auto-sim.simulation-engine.middleware :as sim-de-middleware]))
+   [auto-sim.simulation-engine.middleware :as sim-de-middleware]
+   [automaton-core.adapters.schema        :as core-schema]
+   [automaton-core.utils.sequences        :as core-sequences]))
 
 (def schema [:sequential sim-de-middleware/schema])
 

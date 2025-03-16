@@ -5,14 +5,10 @@
   * `stopping-causes`
   * `snapshot`."
   (:require
-   [auto-sim.simulation-engine                                   :as-alias
-                                                                                sim-engine]
-   [auto-sim.simulation-engine.impl.built-in-sd.causality-broken
-    :as sim-de-causality-broken]
-   [auto-sim.simulation-engine.impl.stopping.cause
-    :as sim-de-stopping-cause]
-   [auto-sim.simulation-engine.snapshot                          :as
-                                                                                sim-de-snapshot]))
+   [auto-sim.simulation-engine                                   :as-alias sim-engine]
+   [auto-sim.simulation-engine.impl.built-in-sd.causality-broken :as sim-de-causality-broken]
+   [auto-sim.simulation-engine.impl.stopping.cause               :as sim-de-stopping-cause]
+   [auto-sim.simulation-engine.snapshot                          :as sim-de-snapshot]))
 
 (def schema
   [:map {:closed false}

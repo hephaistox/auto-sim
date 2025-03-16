@@ -2,13 +2,13 @@
 (ns auto-sim.demo.rc
   "Testing the scheduler with no other lib."
   (:require
-   [automaton-optimization.distribution                    :as opt-distribution]
-   [automaton-optimization.maths                           :as opt-maths]
    [auto-sim.demo.data                      :as sim-demo-data]
    [auto-sim.event-library.common           :as sim-de-common]
    [auto-sim.rc                             :as sim-rc]
    [auto-sim.simulation-engine              :as sim-engine]
-   [auto-sim.simulation-engine.event-return :as sim-de-event-return]))
+   [auto-sim.simulation-engine.event-return :as sim-de-event-return]
+   [automaton-optimization.distribution     :as opt-distribution]
+   [automaton-optimization.maths            :as opt-maths]))
 
 (defn state-rendering
   [state]

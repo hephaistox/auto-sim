@@ -2,11 +2,11 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-core.adapters.schema                          :as core-schema]
    [auto-sim.entity                          :as sut]
    [auto-sim.simulation-engine               :as sim-engine]
    [auto-sim.simulation-engine.impl.model    :as sim-de-model]
-   [auto-sim.simulation-engine.impl.registry :as sim-de-registry]))
+   [auto-sim.simulation-engine.impl.registry :as sim-de-registry]
+   [automaton-core.adapters.schema           :as core-schema]))
 
 (deftest create-test
   (is (= #::sut{:entities {:foo-entity #::sut{:created #::sut{:date 3}

@@ -8,9 +8,9 @@
 
   ![entities][archi/simulation_engine/stopping_stopping-criteria.png]"
   (:require
-   [automaton-core.adapters.schema                                     :as core-schema]
    [auto-sim.simulation-engine                          :as-alias sim-engine]
-   [auto-sim.simulation-engine.impl.stopping.definition :as sim-de-sc-definition]))
+   [auto-sim.simulation-engine.impl.stopping.definition :as sim-de-sc-definition]
+   [automaton-core.adapters.schema                      :as core-schema]))
 
 (def schema
   [:map {:closed true}

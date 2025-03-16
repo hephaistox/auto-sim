@@ -6,8 +6,8 @@
 
 (def stopping-definition
   #:auto-sim.simulation-engine{:id ::sim-engine/no-future-events
-                                              :next-possible? false
-                                              :doc "Stops when no future events exists anymore."})
+                               :next-possible? false
+                               :doc "Stops when no future events exists anymore."})
 
 (defn evaluates
   [request future-events]
@@ -15,5 +15,5 @@
     (empty? future-events)
     (sim-de-request/add-stopping-cause
      #:auto-sim.simulation-engine{:stopping-criteria
-                                                 #:auto-sim.simulation-engine{:stopping-definition
-                                                                                             stopping-definition}})))
+                                  #:auto-sim.simulation-engine{:stopping-definition
+                                                               stopping-definition}})))

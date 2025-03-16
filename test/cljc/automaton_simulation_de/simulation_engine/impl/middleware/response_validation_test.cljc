@@ -2,16 +2,14 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-core.adapters.schema                                                :as core-schema]
-   [auto-sim.simulation-engine                                     :as-alias
-                                                                                  sim-engine]
+   [auto-sim.simulation-engine                                     :as-alias sim-engine]
    [auto-sim.simulation-engine.impl.middleware.response-validation :as sut]
-   [auto-sim.simulation-engine.impl.stopping.cause
-    :as sim-de-stopping-cause]))
+   [auto-sim.simulation-engine.impl.stopping.cause                 :as sim-de-stopping-cause]
+   [automaton-core.adapters.schema                                 :as core-schema]))
 
 (def event-stub
   #:auto-sim.simulation-engine{:type :a
-                                              :date 1})
+                               :date 1})
 
 (deftest evaluates-test
   (is
@@ -19,22 +17,18 @@
     nil
     (->
       #:auto-sim.simulation-engine{:stopping-causes []
-                                                  :snapshot
-                                                  #:auto-sim.simulation-engine{:id 1
-                                                                                              :iteration
-                                                                                              1
+                                   :snapshot
+                                   #:auto-sim.simulation-engine{:id 1
+                                                                :iteration 1
+                                                                :date 1
+                                                                :state {}
+                                                                :past-events []
+                                                                :future-events
+                                                                [event-stub
+                                                                 #:auto-sim.simulation-engine{:type
+                                                                                              :b
                                                                                               :date
-                                                                                              1
-                                                                                              :state
-                                                                                              {}
-                                                                                              :past-events
-                                                                                              []
-                                                                                              :future-events
-                                                                                              [event-stub
-                                                                                               #:auto-sim.simulation-engine{:type
-                                                                                                                                           :b
-                                                                                                                                           :date
-                                                                                                                                           2}]}}
+                                                                                              2}]}}
       (sut/evaluates event-stub)))
    "Well form response returns `nil`.")
   (is (= nil
@@ -52,23 +46,18 @@
         (fn [_request]
           (->>
             #:auto-sim.simulation-engine{:stopping-causes []
-                                                        :snapshot
-                                                        #:auto-sim.simulation-engine{:id
-                                                                                                    1
-                                                                                                    :iteration
-                                                                                                    1
+                                         :snapshot
+                                         #:auto-sim.simulation-engine{:id 1
+                                                                      :iteration 1
+                                                                      :date 1
+                                                                      :state {}
+                                                                      :past-events []
+                                                                      :future-events
+                                                                      [event-stub
+                                                                       #:auto-sim.simulation-engine{:type
+                                                                                                    :b
                                                                                                     :date
-                                                                                                    1
-                                                                                                    :state
-                                                                                                    {}
-                                                                                                    :past-events
-                                                                                                    []
-                                                                                                    :future-events
-                                                                                                    [event-stub
-                                                                                                     #:auto-sim.simulation-engine{:type
-                                                                                                                                                 :b
-                                                                                                                                                 :date
-                                                                                                                                                 2}]}}))))
+                                                                                                    2}]}}))))
       ::sim-engine/stopping-causes))
    "Non of response.")
   (is (seq (->> nil

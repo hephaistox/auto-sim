@@ -2,10 +2,10 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                         :as core-schema]
    [auto-sim.predicates                     :as sim-pred]
    [auto-sim.predicates.composed-predicates :as sut]
-   [auto-sim.predicates.equality-predicates :as sim-pred-equality]))
+   [auto-sim.predicates.equality-predicates :as sim-pred-equality]
+   [automaton-core.adapters.schema          :as core-schema]))
 
 (deftest not-test
   (is (= false ((sut/not-fn (sim-pred-equality/is?-fn :name :m1)) {:name :m1})))

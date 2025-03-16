@@ -37,40 +37,35 @@
 (deftest defaulting-values-test
   (testing "A purely defaulted value resource"
     (is (= #:auto-sim.rc{:capacity 1
-                                        :currently-consuming {}
-                                        :preemption-policy ::sim-rc/no-preemption
-                                        :queue []
-                                        :renewable? true
-                                        :unblocking-policy ::sim-rc/FIFO}
+                         :currently-consuming {}
+                         :preemption-policy ::sim-rc/no-preemption
+                         :queue []
+                         :renewable? true
+                         :unblocking-policy ::sim-rc/FIFO}
            (uncache (sut/defaulting-values nil {} {})))))
   (testing "Other data are kept"
     (is (= #:auto-sim.rc{:capacity 1
-                                        :currently-consuming {}
-                                        :preemption-policy ::sim-rc/no-preemption
-                                        :queue []
-                                        :renewable? true
-                                        :unblocking-policy ::sim-rc/FIFO
-                                        :other-keys :are-allowed}
-           (uncache (sut/defaulting-values #:auto-sim.rc{:other-keys :are-allowed}
-                                           {}
-                                           {}))))))
+                         :currently-consuming {}
+                         :preemption-policy ::sim-rc/no-preemption
+                         :queue []
+                         :renewable? true
+                         :unblocking-policy ::sim-rc/FIFO
+                         :other-keys :are-allowed}
+           (uncache (sut/defaulting-values #:auto-sim.rc{:other-keys :are-allowed} {} {}))))))
 
 (deftest nb-consumed-capacity-test
   (testing "With no currently seized, all the capacity is available"
     (is (zero? (sut/nb-consumed-resources nil)))
     (is (zero? (sut/nb-consumed-resources #:auto-sim.rc{:queue []}))))
   (testing "Defaulted consumed-quantity to 1"
-    (is (= 1
-           (sut/nb-consumed-resources #:auto-sim.rc{:currently-consuming
-                                                                   {:a {:a :b}}}))))
+    (is (= 1 (sut/nb-consumed-resources #:auto-sim.rc{:currently-consuming {:a {:a :b}}}))))
   (testing "Currently seized are summed up"
     (is (= 8
-           (sut/nb-consumed-resources
-            #:auto-sim.rc{:currently-consuming
-                                         {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
-                                          {::sim-rc/consumed-quantity 3}
-                                          #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
-                                          {::sim-rc/consumed-quantity 5}}})))))
+           (sut/nb-consumed-resources #:auto-sim.rc{:currently-consuming
+                                                    {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
+                                                     {::sim-rc/consumed-quantity 3}
+                                                     #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
+                                                     {::sim-rc/consumed-quantity 5}}})))))
 
 (deftest nb-available-resources-test
   (testing "A non existing resource capacity is defaulted to 1"
@@ -82,59 +77,51 @@
     (is (= 9
            (sut/nb-available-resources
             #:auto-sim.rc{:capacity 17
-                                         :currently-consuming
-                                         {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
-                                          {::sim-rc/event
-                                           #:auto-sim.simulation-engine{:type ::c
-                                                                                       :date 11}
-                                           ::sim-rc/consumed-quantity 3}
-                                          #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
-                                          {::sim-rc/event
-                                           #:auto-sim.simulation-engine{:type ::d
-                                                                                       :date 19}
-                                           ::sim-rc/consumed-quantity 5}}}))))
+                          :currently-consuming
+                          {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
+                           {::sim-rc/event #:auto-sim.simulation-engine{:type ::c
+                                                                        :date 11}
+                            ::sim-rc/consumed-quantity 3}
+                           #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
+                           {::sim-rc/event #:auto-sim.simulation-engine{:type ::d
+                                                                        :date 19}
+                            ::sim-rc/consumed-quantity 5}}}))))
   (testing "If all resources are used, zero are available"
     (is (zero? (sut/nb-available-resources
                 #:auto-sim.rc{:capacity 8
-                                             :currently-consuming
-                                             {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
-                                              {::sim-rc/event
-                                               #:auto-sim.simulation-engine{:type ::c
-                                                                                           :date 11}
-                                               ::sim-rc/consumed-quantity 3}
-                                              #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
-                                              {::sim-rc/event
-                                               #:auto-sim.simulation-engine{:type ::d
-                                                                                           :date 19}
-                                               ::sim-rc/consumed-quantity 5}}})))
+                              :currently-consuming
+                              {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
+                               {::sim-rc/event #:auto-sim.simulation-engine{:type ::c
+                                                                            :date 11}
+                                ::sim-rc/consumed-quantity 3}
+                               #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
+                               {::sim-rc/event #:auto-sim.simulation-engine{:type ::d
+                                                                            :date 19}
+                                ::sim-rc/consumed-quantity 5}}})))
     (is (zero? (sut/nb-available-resources
                 #:auto-sim.rc{:capacity 7
-                                             :currently-consuming
-                                             {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
-                                              {::sim-rc/event
-                                               #:auto-sim.simulation-engine{:type ::c
-                                                                                           :date 11}
-                                               ::sim-rc/consumed-quantity 3}
-                                              #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
-                                              {::sim-rc/event
-                                               #:auto-sim.simulation-engine{:type ::d
-                                                                                           :date 19}
-                                               ::sim-rc/consumed-quantity 5}}})))))
+                              :currently-consuming
+                              {#uuid "33497220-f844-11ee-9fa1-17acea14e9df"
+                               {::sim-rc/event #:auto-sim.simulation-engine{:type ::c
+                                                                            :date 11}
+                                ::sim-rc/consumed-quantity 3}
+                               #uuid "33497220-f844-11ee-9fa1-17acea14e9de"
+                               {::sim-rc/event #:auto-sim.simulation-engine{:type ::d
+                                                                            :date 19}
+                                ::sim-rc/consumed-quantity 5}}})))))
 
 (deftest seize-test
   (testing "Seizing one resource with that capacity already available"
     (is (= #:auto-sim.rc{:seizing-event {:a :b}
-                                        :consumed-quantity 9}
-           (let [[consumption-uuid resource]
-                 (sut/seize #:auto-sim.rc{:capacity 13} 9 {:a :b})]
+                         :consumed-quantity 9}
+           (let [[consumption-uuid resource] (sut/seize #:auto-sim.rc{:capacity 13} 9 {:a :b})]
              (get-in resource [::sim-rc/currently-consuming consumption-uuid]))))
     (is (= #:auto-sim.rc{:seizing-event {:a :b}
-                                        :consumed-quantity 9}
-           (let [[consumption-uuid resource]
-                 (sut/seize #:auto-sim.rc{:capacity 9} 9 {:a :b})]
+                         :consumed-quantity 9}
+           (let [[consumption-uuid resource] (sut/seize #:auto-sim.rc{:capacity 9} 9 {:a :b})]
              (get-in resource [::sim-rc/currently-consuming consumption-uuid]))))
     (is (= #:auto-sim.rc{:seizing-event {:a :b}
-                                        :consumed-quantity 1}
+                         :consumed-quantity 1}
            (let [[consumption-uuid resource] (sut/seize #:auto-sim.rc{} 1 {:a :b})]
              (get-in resource [::sim-rc/currently-consuming consumption-uuid])))))
   (testing "Seizing one resource with capacity missing"
@@ -144,9 +131,8 @@
                     second
                     ::sim-rc/currently-consuming)))
     (is (= #:auto-sim.rc{:capacity 12
-                                        :queue [#:auto-sim.rc{:seizing-event {:a :b}
-                                                                             :consumed-quantity
-                                                                             20}]}
+                         :queue [#:auto-sim.rc{:seizing-event {:a :b}
+                                               :consumed-quantity 20}]}
            (-> (sut/seize #:auto-sim.rc{:capacity 12} 20 {:a :b})
                second)))
     (is (-> (sut/seize #:auto-sim.rc{:capacity 12} 20 {:a :b})
@@ -157,33 +143,30 @@
   (testing "Dispose a non existing resource is noop"
     (is (= [[]
             #:auto-sim.rc{:currently-consuming {}
-                                         :queue []}]
+                          :queue []}]
            (dispose-cacheproof {} 1))))
   (testing "Dispose an existing event, no operation is pending"
     (is (= [[]
             #:auto-sim.rc{:capacity 20
-                                         :currently-consuming {}
-                                         :queue []}]
-           (dispose-cacheproof
-            #:auto-sim.rc{:capacity 20
-                                         :currently-consuming
-                                         {:aa #:auto-sim.rc{:consumed-quantity 13}}
-                                         :queue []}
-            :aa))))
+                          :currently-consuming {}
+                          :queue []}]
+           (dispose-cacheproof #:auto-sim.rc{:capacity 20
+                                             :currently-consuming
+                                             {:aa #:auto-sim.rc{:consumed-quantity 13}}
+                                             :queue []}
+                               :aa))))
   (testing "Dispose an existing event, an operation is pending"
     (is (= [[#:auto-sim.rc{:seizing-event {:a :b}
-                                          :consumed-quantity 12}]
+                           :consumed-quantity 12}]
             #:auto-sim.rc{:capacity 20
-                                         :currently-consuming {}
-                                         :queue []}]
-           (dispose-cacheproof
-            #:auto-sim.rc{:capacity 20
-                                         :currently-consuming
-                                         {:aa #:auto-sim.rc{:consumed-quantity 13}}
-                                         :queue [#:auto-sim.rc{:seizing-event {:a :b}
-                                                                              :consumed-quantity
-                                                                              12}]}
-            :aa)))))
+                          :currently-consuming {}
+                          :queue []}]
+           (dispose-cacheproof #:auto-sim.rc{:capacity 20
+                                             :currently-consuming
+                                             {:aa #:auto-sim.rc{:consumed-quantity 13}}
+                                             :queue [#:auto-sim.rc{:seizing-event {:a :b}
+                                                                   :consumed-quantity 12}]}
+                               :aa)))))
 
 (deftest dispose-seize-test
   (testing "Disposing 1 which is not enough for next event"
@@ -199,12 +182,11 @@
                                ffirst)]
       (is (= [[]
               #:auto-sim.rc{:currently-consuming {}
-                                           :capacity 1
-                                           :queue
-                                           [#:auto-sim.rc{:seizing-event {:a :b2}
-                                                                         :consumed-quantity 2}
-                                            #:auto-sim.rc{:seizing-event {:a :b3}
-                                                                         :consumed-quantity 3}]}]
+                            :capacity 1
+                            :queue [#:auto-sim.rc{:seizing-event {:a :b2}
+                                                  :consumed-quantity 2}
+                                    #:auto-sim.rc{:seizing-event {:a :b3}
+                                                  :consumed-quantity 3}]}]
              (dispose-cacheproof resource consumption-uuid)))))
   (testing "There is 1 capacity left, and 1 disposed, which is enough for the next one"
     (let [resource (-> #:auto-sim.rc{:capacity 2}
@@ -218,38 +200,37 @@
                                ::sim-rc/currently-consuming
                                ffirst)]
       (is (= [[#:auto-sim.rc{:seizing-event {:a :b2}
-                                            :consumed-quantity 2}]
+                             :consumed-quantity 2}]
               #:auto-sim.rc{:currently-consuming {}
-                                           :capacity 2
-                                           :queue
-                                           [#:auto-sim.rc{:seizing-event {:a :b3}
-                                                                         :consumed-quantity 3}]}]
+                            :capacity 2
+                            :queue [#:auto-sim.rc{:seizing-event {:a :b3}
+                                                  :consumed-quantity 3}]}]
              (dispose-cacheproof resource consumption-uuid))))))
 
 (deftest update-capacity-test
   (testing "Empty resource is updated to 7"
     (is (= [[]
             #:auto-sim.rc{:capacity 7
-                                         :queue []}]
+                          :queue []}]
            (update-capacity-cacheproof {} 7)
            (update-capacity-cacheproof nil 7)
            (update-capacity-cacheproof #:auto-sim.rc{:capacity 5} 7))))
   (testing "A resource is updated with the `new-capacity`"
     (is (= 14
            (-> #:auto-sim.rc{:capacity 1
-                                            :preemption-policy ::sim-rc/no-preemption}
+                             :preemption-policy ::sim-rc/no-preemption}
                (update-capacity-cacheproof 14)
                second
                ::sim-rc/capacity))))
   (testing "Not implemented preemption policy is raising an error, if the capacity is decreased"
     (is (-> #:auto-sim.rc{:capacity 1
-                                         :preemption-policy ::sim-rc/not-existing-policy}
+                          :preemption-policy ::sim-rc/not-existing-policy}
             (update-capacity-cacheproof 12)))
     (is (-> #:auto-sim.rc{:capacity 5
-                                         :preemption-policy ::sim-rc/not-existing-policy}
+                          :preemption-policy ::sim-rc/not-existing-policy}
             (update-capacity-cacheproof 5))))
   (testing "Preemption is defaulted to no-preemption"
     (is (= [[]
             #:auto-sim.rc{:capacity 12
-                                         :queue []}]
+                          :queue []}]
            (update-capacity-cacheproof #:auto-sim.rc{:capacity 5} 12)))))

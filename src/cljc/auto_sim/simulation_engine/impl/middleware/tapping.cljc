@@ -1,6 +1,5 @@
 #_{:heph-ignore {:forbidden-words ["tap>"]}}
-(ns auto-sim.simulation-engine.impl.middleware.tapping
-  "Middleware to tap response and requests.")
+(ns auto-sim.simulation-engine.impl.middleware.tapping "Middleware to tap response and requests.")
 
 (defn wrap-response
   [handler]

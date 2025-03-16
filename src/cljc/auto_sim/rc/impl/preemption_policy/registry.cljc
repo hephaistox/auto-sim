@@ -13,5 +13,4 @@
 (defn registry
   "The base policies for `preemption-policy`."
   []
-  #:auto-sim.rc{::sim-rc/no-preemption
-                               sim-de-rc-preemption-policy-base/no-preemption})
+  #:auto-sim.rc{::sim-rc/no-preemption sim-de-rc-preemption-policy-base/no-preemption})

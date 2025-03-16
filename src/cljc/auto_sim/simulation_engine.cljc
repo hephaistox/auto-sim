@@ -5,12 +5,12 @@ Discrete event simulation is modeling a real system with discrete events.
 * Contains a user-specific domain, constraints, a customer-specific state and events modeling and an option to render visually the effects.
 * Customer simulation can use directly `DE Simulation` or a library that eases the modeling: `rc modeling`, `industry modeling`, … "
   (:require
-   [automaton-core.adapters.schema                            :as core-schema]
    [auto-sim.simulation-engine.impl.model      :as sim-de-model]
    [auto-sim.simulation-engine.impl.model-data :as sim-de-model-data]
    [auto-sim.simulation-engine.impl.registry   :as sim-de-registry]
    [auto-sim.simulation-engine.impl.scheduler  :as sim-de-scheduler]
-   [auto-sim.simulation-engine.response        :as sim-de-response]))
+   [auto-sim.simulation-engine.response        :as sim-de-response]
+   [automaton-core.adapters.schema             :as core-schema]))
 
 (defn registries "Returns the `built-in` registries of simulation-de." [] (sim-de-registry/build))
 

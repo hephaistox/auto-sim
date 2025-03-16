@@ -8,7 +8,7 @@
    [auto-sim.simulation-engine              :as sim-engine]
    [auto-sim.simulation-engine.event        :as sim-de-event]
    [auto-sim.simulation-engine.event-return :as sim-de-event-return]
-   [clojure.string                                         :as str]))
+   [clojure.string                          :as str]))
 
 ;; print
 (defn state-rendering

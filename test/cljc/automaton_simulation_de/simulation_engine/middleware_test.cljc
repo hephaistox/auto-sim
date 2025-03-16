@@ -1,9 +1,9 @@
 (ns auto-sim.simulation-engine.middleware-test
   (:require
-   [automaton-core.adapters.schema                       :as core-schema]
+   [auto-sim.simulation-engine.middleware :as sut]
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [auto-sim.simulation-engine.middleware :as sut]))
+   [automaton-core.adapters.schema        :as core-schema]))
 
 (deftest id-schema-test (is (= nil (core-schema/validate-humanize sut/id-schema))))
 

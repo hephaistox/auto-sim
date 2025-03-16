@@ -18,11 +18,9 @@
         next-snapshot-date (::sim-engine/date next-snapshot)]
     (when (pos? (compare snapshot-date next-snapshot-date))
       #:auto-sim.simulation-engine{:stopping-criteria
-                                                  #:auto-sim.simulation-engine{:stopping-definition
-                                                                                              stopping-definition}
-                                                  :current-event current-event
-                                                  :context
-                                                  #:auto-sim.simulation-engine{:previous-date
-                                                                                              snapshot-date
-                                                                                              :next-date
-                                                                                              next-snapshot-date}})))
+                                   #:auto-sim.simulation-engine{:stopping-definition
+                                                                stopping-definition}
+                                   :current-event current-event
+                                   :context
+                                   #:auto-sim.simulation-engine{:previous-date snapshot-date
+                                                                :next-date next-snapshot-date}})))

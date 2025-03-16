@@ -2,12 +2,12 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                       :as core-schema]
    [auto-sim.control                      :as sim-de-control]
    [auto-sim.control.computation          :as sut]
    [auto-sim.control.computation.response :as sim-de-comp-response]
    [auto-sim.demo.control                 :as sim-demo-control]
-   [auto-sim.simulation-engine            :as-alias sim-engine]))
+   [auto-sim.simulation-engine            :as-alias sim-engine]
+   [automaton-core.adapters.schema        :as core-schema]))
 
 (defn- it-nb
   [resp]

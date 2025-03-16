@@ -2,11 +2,10 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                                            :as core-schema]
    [auto-sim.simulation-engine                                 :as-alias sim-engine]
    [auto-sim.simulation-engine.impl.middleware.registry        :as sut]
-   [auto-sim.simulation-engine.impl.middleware.state-rendering
-    :as sim-de-state-rendering]))
+   [auto-sim.simulation-engine.impl.middleware.state-rendering :as sim-de-state-rendering]
+   [automaton-core.adapters.schema                             :as core-schema]))
 
 (deftest schema-test (is (= nil (core-schema/validate-humanize sut/schema))))
 

@@ -6,10 +6,8 @@
   * ![lifestatus](archi/entity/lifestatus.png)"
   (:refer-clojure :exclude [update])
   (:require
-   [auto-sim.simulation-engine                                   :as-alias
-                                                                                sim-engine]
-   [auto-sim.simulation-engine.impl.stopping-definition.registry
-    :as sim-de-stopping-registry]))
+   [auto-sim.simulation-engine                                   :as-alias sim-engine]
+   [auto-sim.simulation-engine.impl.stopping-definition.registry :as sim-de-stopping-registry]))
 
 (defn create
   "Creates an entity called `:entity-name` with `entity-data`. The lifecycle of this entity starts at `date`.
@@ -157,11 +155,10 @@
 
 (defn stopping-definition
   []
-  #:auto-sim.simulation-engine{:doc
-                                              "Stops when an error occured in an entity lifecycle."
-                                              :id ::entity-lifecycle-corrupted
-                                              :next-possible? true
-                                              :stopping-evaluation lifecycle-corrupted})
+  #:auto-sim.simulation-engine{:doc "Stops when an error occured in an entity lifecycle."
+                               :id ::entity-lifecycle-corrupted
+                               :next-possible? true
+                               :stopping-evaluation lifecycle-corrupted})
 
 (defn wrap-model
   "Wraps a model to add necessary behavior to model an entity."

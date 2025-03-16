@@ -2,15 +2,11 @@
   "Stops when the response is valid through inconsistency and schema.
   This criteria is built-in to this middleware as it is requiring the `response` knowledge. User `stopping-criteria` knows only `snapshot`."
   (:require
-   [automaton-core.adapters.schema                                                 :as core-schema]
-   [auto-sim.simulation-engine                                      :as-alias
-                                                                                   sim-engine]
-   [auto-sim.simulation-engine.impl.built-in-sd.response-validation
-    :as sim-de-response-validation]
-   [auto-sim.simulation-engine.response                             :as
-                                                                                   sim-de-response]
-   [auto-sim.simulation-engine.snapshot
-    :as sim-de-snapshot]))
+   [auto-sim.simulation-engine                                      :as-alias sim-engine]
+   [auto-sim.simulation-engine.impl.built-in-sd.response-validation :as sim-de-response-validation]
+   [auto-sim.simulation-engine.response                             :as sim-de-response]
+   [auto-sim.simulation-engine.snapshot                             :as sim-de-snapshot]
+   [automaton-core.adapters.schema                                  :as core-schema]))
 
 (defn evaluates
   [{::sim-engine/keys [snapshot]
@@ -23,12 +19,10 @@
     (when (or response-inconsistency? response-error?)
       (cond->
         #:auto-sim.simulation-engine{:stopping-criteria
-                                                    #:auto-sim.simulation-engine{:stopping-definition
-                                                                                                (sim-de-response-validation/stopping-definition)}
-                                                    :current-event current-event
-                                                    :context
-                                                    #:auto-sim.simulation-engine{:response
-                                                                                                response}}
+                                     #:auto-sim.simulation-engine{:stopping-definition
+                                                                  (sim-de-response-validation/stopping-definition)}
+                                     :current-event current-event
+                                     :context #:auto-sim.simulation-engine{:response response}}
         response-inconsistency? (assoc-in [::sim-engine/context ::sim-engine/inconsistency]
                                  response-inconsistency)
         response-error? (assoc-in [::sim-engine/context ::sim-engine/schema]

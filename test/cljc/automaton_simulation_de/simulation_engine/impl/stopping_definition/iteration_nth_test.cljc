@@ -2,13 +2,10 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                                                   :as
-                                                                                     core-schema]
-   [auto-sim.simulation-engine                                        :as-alias
-                                                                                     sim-engine]
+   [auto-sim.simulation-engine                                        :as-alias sim-engine]
    [auto-sim.simulation-engine.impl.stopping-definition.iteration-nth :as sut]
-   [auto-sim.simulation-engine.impl.stopping.definition
-    :as sim-de-sc-definition]))
+   [auto-sim.simulation-engine.impl.stopping.definition               :as sim-de-sc-definition]
+   [automaton-core.adapters.schema                                    :as core-schema]))
 
 (deftest stop-nth-test
   (testing "Stops when the iteration number of the snpahost is greater or equal to the parameter."
@@ -22,8 +19,7 @@
                                    #:auto-sim.simulation-engine{:n 10})))))
   (testing "Snapshot with no iteration number is default to 0"
     (is (not (:stop? (sut/stop-nth {} #:auto-sim.simulation-engine{:n 12}))))
-    (is (:auto-sim.simulation-engine/stop?
-         (sut/stop-nth {} #:auto-sim.simulation-engine{:n 0})))
+    (is (:auto-sim.simulation-engine/stop? (sut/stop-nth {} #:auto-sim.simulation-engine{:n 0})))
     (testing "No parameter is defaulted to `-1`, stopping whatever is happening."
       (is (sut/stop-nth {} {})))))
 

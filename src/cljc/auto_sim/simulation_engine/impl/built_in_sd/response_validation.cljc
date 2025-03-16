@@ -6,5 +6,5 @@
 (defn stopping-definition
   []
   #:auto-sim.simulation-engine{:doc "Stops when the response is not valid."
-                                              :id ::sim-engine/response-schema
-                                              :next-possible? true})
+                               :id ::sim-engine/response-schema
+                               :next-possible? true})

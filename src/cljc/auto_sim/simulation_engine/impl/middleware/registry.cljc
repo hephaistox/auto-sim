@@ -1,19 +1,15 @@
 (ns auto-sim.simulation-engine.impl.middleware.registry
   "Registry for middlewares associating a keyword to its middleware function."
   (:require
-   [automaton-core.adapters.schema                                                :as core-schema]
-   [auto-sim.simulation-engine                                     :as-alias
-                                                                                  sim-engine]
-   [auto-sim.simulation-engine.impl.middleware.request-validation
-    :as sim-de-mdw-request-validation]
-   [auto-sim.simulation-engine.impl.middleware.response-validation
-    :as sim-de-mdw-response-validation]
-   [auto-sim.simulation-engine.impl.middleware.state-rendering
-    :as sim-de-state-rendering]
-   [auto-sim.simulation-engine.impl.middleware.tapping             :as
-                                                                                  sim-de-tapping]
-   [auto-sim.simulation-engine.middleware
-    :as sim-de-middleware]))
+   [auto-sim.simulation-engine                                     :as-alias sim-engine]
+   [auto-sim.simulation-engine.impl.middleware.request-validation  :as
+                                                                   sim-de-mdw-request-validation]
+   [auto-sim.simulation-engine.impl.middleware.response-validation :as
+                                                                   sim-de-mdw-response-validation]
+   [auto-sim.simulation-engine.impl.middleware.state-rendering     :as sim-de-state-rendering]
+   [auto-sim.simulation-engine.impl.middleware.tapping             :as sim-de-tapping]
+   [auto-sim.simulation-engine.middleware                          :as sim-de-middleware]
+   [automaton-core.adapters.schema                                 :as core-schema]))
 
 (def schema [:map-of sim-de-middleware/id-schema sim-de-middleware/schema])
 
@@ -21,13 +17,13 @@
   "Returns the registry of middlewares."
   []
   #:auto-sim.simulation-engine{:state-rendering sim-de-state-rendering/wrap
-                                              :state-printing sim-de-state-rendering/wrap-print
-                                              :tap-request sim-de-tapping/wrap-request
-                                              :sim-de-mdw-request-inconsistency
-                                              sim-de-mdw-request-validation/wrap-request
-                                              :sim-de-mdw-response-validation
-                                              sim-de-mdw-response-validation/wrap-response
-                                              :tap-response sim-de-tapping/wrap-response})
+                               :state-printing sim-de-state-rendering/wrap-print
+                               :tap-request sim-de-tapping/wrap-request
+                               :sim-de-mdw-request-inconsistency
+                               sim-de-mdw-request-validation/wrap-request
+                               :sim-de-mdw-response-validation
+                               sim-de-mdw-response-validation/wrap-response
+                               :tap-response sim-de-tapping/wrap-response})
 
 (defn validate [registry] (core-schema/validate-data-humanize schema registry))
 

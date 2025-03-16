@@ -2,26 +2,26 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                             :as core-schema]
    [auto-sim.simulation-engine                  :as-alias sim-engine]
-   [auto-sim.simulation-engine.impl.middlewares :as sut]))
+   [auto-sim.simulation-engine.impl.middlewares :as sut]
+   [automaton-core.adapters.schema              :as core-schema]))
 
 (deftest schema-test (is (= nil (core-schema/validate-humanize sut/schema))))
 
 (def ^:private snapshot-stub
   #:auto-sim.simulation-engine{:id 2
-                                              :iteration 2
-                                              :date 2
-                                              :state nil
-                                              :past-events nil
-                                              :future-events nil})
+                               :iteration 2
+                               :date 2
+                               :state nil
+                               :past-events nil
+                               :future-events nil})
 
 (def ^:private request-stub
   #:auto-sim.simulation-engine{:current-event nil
-                                              :event-execution nil
-                                              :snapshot snapshot-stub
-                                              :sorting (constantly nil)
-                                              :stopping-causes nil})
+                               :event-execution nil
+                               :snapshot snapshot-stub
+                               :sorting (constantly nil)
+                               :stopping-causes nil})
 
 (deftest wrap-handler-test
   (testing "Chaining of middleware is ok"

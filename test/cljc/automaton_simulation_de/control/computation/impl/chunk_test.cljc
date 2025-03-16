@@ -44,49 +44,44 @@
                                                  #:auto-sim.simulation-engine{:n 2}]]
                                                0)
         (is (= 10 (first (last (:iterations @chunk-state))))))
-      (let [resp (sim-de-computation/scheduler-response
-                  regular-model
-                  [[:auto-sim.simulation-engine/iteration-nth
-                    #:auto-sim.simulation-engine{:n 10}]]
-                  0)]
+      (let [resp (sim-de-computation/scheduler-response regular-model
+                                                        [[:auto-sim.simulation-engine/iteration-nth
+                                                          #:auto-sim.simulation-engine{:n 10}]]
+                                                        0)]
         (is (= 10
                (-> resp
                    it-nb)))
         (is (= :success (::sim-de-control/status resp))))
-      (let [resp (sim-de-computation/scheduler-response
-                  infinite-model
-                  [[:auto-sim.simulation-engine/iteration-nth
-                    #:auto-sim.simulation-engine{:n 10}]]
-                  0)]
+      (let [resp (sim-de-computation/scheduler-response infinite-model
+                                                        [[:auto-sim.simulation-engine/iteration-nth
+                                                          #:auto-sim.simulation-engine{:n 10}]]
+                                                        0)]
         (is (= 10
                (-> resp
                    it-nb)))
         (is (= :success (::sim-de-control/status resp))))
-      (let [resp (sim-de-computation/scheduler-response
-                  model-with-end
-                  [[:auto-sim.simulation-engine/iteration-nth
-                    #:auto-sim.simulation-engine{:n 15}]]
-                  0)]
+      (let [resp (sim-de-computation/scheduler-response model-with-end
+                                                        [[:auto-sim.simulation-engine/iteration-nth
+                                                          #:auto-sim.simulation-engine{:n 15}]]
+                                                        0)]
         (is (= 15
                (-> resp
                    it-nb)))
         (is (= :success (::sim-de-control/status resp))))
-      (let [resp (sim-de-computation/scheduler-response
-                  regular-model
-                  [[:auto-sim.simulation-engine/iteration-nth
-                    #:auto-sim.simulation-engine{:n 50}]]
-                  0)]
+      (let [resp (sim-de-computation/scheduler-response regular-model
+                                                        [[:auto-sim.simulation-engine/iteration-nth
+                                                          #:auto-sim.simulation-engine{:n 50}]]
+                                                        0)]
         (is (= 31
                (-> resp
                    it-nb)))
         (is (= :no-next
                (-> resp
                    ::sim-de-control/status))))
-      (let [resp (sim-de-computation/scheduler-response
-                  model-with-end
-                  [[:auto-sim.simulation-engine/iteration-nth
-                    #:auto-sim.simulation-engine{:n 50}]]
-                  0)]
+      (let [resp (sim-de-computation/scheduler-response model-with-end
+                                                        [[:auto-sim.simulation-engine/iteration-nth
+                                                          #:auto-sim.simulation-engine{:n 50}]]
+                                                        0)]
         (is (= 20
                (-> resp
                    it-nb)))

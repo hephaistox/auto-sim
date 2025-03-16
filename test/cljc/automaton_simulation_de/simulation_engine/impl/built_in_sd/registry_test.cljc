@@ -2,8 +2,8 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is]]
       :cljs [cljs.test :refer [deftest is] :include-macros true])
-   [automaton-core.adapters.schema                                      :as core-schema]
-   [auto-sim.simulation-engine.impl.built-in-sd.registry :as sut]))
+   [auto-sim.simulation-engine.impl.built-in-sd.registry :as sut]
+   [automaton-core.adapters.schema                       :as core-schema]))
 
 (deftest build-test
   (is (= nil (core-schema/validate-data-humanize sut/schema (sut/build)))

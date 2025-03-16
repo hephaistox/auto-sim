@@ -12,11 +12,11 @@
     :as _params}]
   (when (or (nil? b) (>= date b))
     #:auto-sim.simulation-engine{:stop? true
-                                                :context nil}))
+                                 :context nil}))
 
 (defn stopping-definition
   []
   #:auto-sim.simulation-engine{:doc "Stop at `bucket` `b` or later on."
-                                              :id ::bucket-stopping
-                                              :next-possible? true
-                                              :stopping-evaluation stop-bucket})
+                               :id ::bucket-stopping
+                               :next-possible? true
+                               :stopping-evaluation stop-bucket})

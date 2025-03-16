@@ -14,4 +14,4 @@
   "The base policies `registry`."
   []
   #:auto-sim.rc{:FIFO sim-de-rc-unblocking-policy-base/fifo-policy
-                               :LIFO sim-de-rc-unblocking-policy-base/lifo-policy})
+                :LIFO sim-de-rc-unblocking-policy-base/lifo-policy})

@@ -2,9 +2,9 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [automaton-core.adapters.schema                            :as core-schema]
    [auto-sim.simulation-engine                 :as-alias sim-engine]
-   [auto-sim.simulation-engine.impl.model-data :as sut]))
+   [auto-sim.simulation-engine.impl.model-data :as sut]
+   [automaton-core.adapters.schema             :as core-schema]))
 
 (deftest schema-test
   (testing "Schema are valid."
@@ -44,22 +44,16 @@
            (core-schema/validate-data-humanize sut/stopping-criterias-schema
                                                [[:foo {}]])))
     (is (= nil (core-schema/validate-data-humanize sut/stopping-criterias-schema [])))
-    (is
-     (=
-      ["invalid type"]
-      (->
-        (core-schema/validate-data-humanize
-         sut/stopping-criterias-schema
-         #:auto-sim.simulation-engine{:model-end? false
-                                                     :params {:whatever "whenever"}
-                                                     :stopping-definition
-                                                     #:auto-sim.simulation-engine{:doc
-                                                                                                 "test"
-                                                                                                 :id
-                                                                                                 :test-one
-                                                                                                 :next-possible?
-                                                                                                 false}})
-        :error))))
+    (is (= ["invalid type"]
+           (-> (core-schema/validate-data-humanize
+                sut/stopping-criterias-schema
+                #:auto-sim.simulation-engine{:model-end? false
+                                             :params {:whatever "whenever"}
+                                             :stopping-definition
+                                             #:auto-sim.simulation-engine{:doc "test"
+                                                                          :id :test-one
+                                                                          :next-possible? false}})
+               :error))))
   (deftest ordering-schema-test
     (testing "Invalid ordering are rejected"
       (is (= [[["should be :auto-sim.simulation-engine/field"

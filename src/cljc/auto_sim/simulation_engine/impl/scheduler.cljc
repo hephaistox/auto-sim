@@ -14,34 +14,23 @@
   ![aggregate](archi/scheduler_aggregate.png)
   ![state diagram](archi/scheduler_state.png)"
   (:require
-   [automaton-core.adapters.schema                                                    :as
-                                                                                      core-schema]
-   [auto-sim.simulation-engine                                         :as-alias
-                                                                                      sim-engine]
-   [auto-sim.simulation-engine.event-return
-    :as sim-de-event-return]
-   [auto-sim.simulation-engine.impl.built-in-sd.execution-not-found
-    :as sim-de-execution-not-found]
-   [auto-sim.simulation-engine.impl.built-in-sd.failed-event-execution
-    :as sim-failed-event-execution]
-   [auto-sim.simulation-engine.impl.built-in-sd.no-future-events
-    :as sim-de-no-future-events]
-   [auto-sim.simulation-engine.impl.middleware.registry
-    :as sim-de-middleware-registry]
-   [auto-sim.simulation-engine.impl.middlewares
-    :as sim-de-middlewares]
-   [auto-sim.simulation-engine.impl.model                              :as
-                                                                                      sim-de-model]
-   [auto-sim.simulation-engine.impl.model-data
-    :as sim-de-model-data]
-   [auto-sim.simulation-engine.impl.stopping.criteria
-    :as sim-de-criteria]
-   [auto-sim.simulation-engine.ordering
-    :as sim-de-ordering]
-   [auto-sim.simulation-engine.response
-    :as sim-de-response]
-   [auto-sim.simulation-engine.snapshot
-    :as sim-de-snapshot]))
+   [auto-sim.simulation-engine                                         :as-alias sim-engine]
+   [auto-sim.simulation-engine.event-return                            :as sim-de-event-return]
+   [auto-sim.simulation-engine.impl.built-in-sd.execution-not-found    :as
+                                                                       sim-de-execution-not-found]
+   [auto-sim.simulation-engine.impl.built-in-sd.failed-event-execution :as
+                                                                       sim-failed-event-execution]
+   [auto-sim.simulation-engine.impl.built-in-sd.no-future-events       :as sim-de-no-future-events]
+   [auto-sim.simulation-engine.impl.middleware.registry                :as
+                                                                       sim-de-middleware-registry]
+   [auto-sim.simulation-engine.impl.middlewares                        :as sim-de-middlewares]
+   [auto-sim.simulation-engine.impl.model                              :as sim-de-model]
+   [auto-sim.simulation-engine.impl.model-data                         :as sim-de-model-data]
+   [auto-sim.simulation-engine.impl.stopping.criteria                  :as sim-de-criteria]
+   [auto-sim.simulation-engine.ordering                                :as sim-de-ordering]
+   [auto-sim.simulation-engine.response                                :as sim-de-response]
+   [auto-sim.simulation-engine.snapshot                                :as sim-de-snapshot]
+   [automaton-core.adapters.schema                                     :as core-schema]))
 
 (defn handler
   "The handler execution is based on `request` data and is returning a `response`, it could be enriched with `middlewares`.
@@ -55,7 +44,7 @@
   [{::sim-engine/keys [stopping-causes snapshot event-execution sorting current-event]
     :as _request}]
   (let [response #:auto-sim.simulation-engine{:stopping-causes stopping-causes
-                                                             :snapshot snapshot}]
+                                              :snapshot snapshot}]
     (cond
       (seq stopping-causes) response
       (not (fn? event-execution)) (-> response
@@ -98,10 +87,10 @@
                              (mapv #(sim-de-criteria/evaluates % snapshot))
                              (filter some?))
         request #:auto-sim.simulation-engine{:stopping-causes stopping-causes
-                                                            :snapshot snapshot
-                                                            :event-execution event-execution
-                                                            :current-event current-event
-                                                            :sorting sorting}]
+                                             :snapshot snapshot
+                                             :event-execution event-execution
+                                             :current-event current-event
+                                             :sorting sorting}]
     (-> request
         (sim-de-no-future-events/evaluates future-events)
         ahandler
@@ -111,20 +100,18 @@
   "Returns a map describing why it is invalid or `nil` if it is valid."
   [model scheduler-middlewares scheduler-stopping-criterias snapshot]
   (let [validate-data
-        #:auto-sim.simulation-engine{:model (core-schema/validate-data-humanize
-                                                            sim-de-model/schema
-                                                            model)
-                                                    :snapshot (core-schema/validate-data-humanize
-                                                               sim-de-snapshot/schema
-                                                               snapshot)
-                                                    :scheduler-middlewares
-                                                    (core-schema/validate-data-humanize
-                                                     sim-de-model-data/middlewares-schema
-                                                     scheduler-middlewares)
-                                                    :scheduler-stopping-criteria
-                                                    (core-schema/validate-data-humanize
-                                                     sim-de-model-data/stopping-criterias-schema
-                                                     scheduler-stopping-criterias)}]
+        #:auto-sim.simulation-engine{:model (core-schema/validate-data-humanize sim-de-model/schema
+                                                                                model)
+                                     :snapshot (core-schema/validate-data-humanize
+                                                sim-de-snapshot/schema
+                                                snapshot)
+                                     :scheduler-middlewares (core-schema/validate-data-humanize
+                                                             sim-de-model-data/middlewares-schema
+                                                             scheduler-middlewares)
+                                     :scheduler-stopping-criteria
+                                     (core-schema/validate-data-humanize
+                                      sim-de-model-data/stopping-criterias-schema
+                                      scheduler-stopping-criterias)}]
     (when (not-every? nil? (vals validate-data)) validate-data)))
 
 (defn scheduler
@@ -153,11 +140,11 @@
         initial-snapshot (if (map? snapshot)
                            snapshot
                            #:auto-sim.simulation-engine{:id 1
-                                                                       :iteration 1
-                                                                       :date nil
-                                                                       :state {}
-                                                                       :past-events []
-                                                                       :future-events []})
+                                                        :iteration 1
+                                                        :date nil
+                                                        :state {}
+                                                        :past-events []
+                                                        :future-events []})
         sorting (sim-de-ordering/sorter ordering)
         wrapped-handler (->> updated-middlewares
                              (sim-de-middlewares/concat-supp-middlewares middlewares)

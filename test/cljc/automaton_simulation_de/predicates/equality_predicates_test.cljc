@@ -1,10 +1,10 @@
 (ns auto-sim.predicates.equality-predicates-test
   (:require
-   [automaton-core.adapters.schema                         :as core-schema]
    [auto-sim.predicates                     :as sim-pred]
+   [auto-sim.predicates.equality-predicates :as sut]
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
-   [auto-sim.predicates.equality-predicates :as sut]))
+   [automaton-core.adapters.schema          :as core-schema]))
 
 
 (deftest is?-fn-test

@@ -1,7 +1,7 @@
 (ns auto-sim.demo.data
   (:require
-   [automaton-optimization.prng               :as opt-prng]
-   [auto-sim.simulation-engine :as-alias sim-engine]))
+   [auto-sim.simulation-engine  :as-alias sim-engine]
+   [automaton-optimization.prng :as opt-prng]))
 
 ;; Problem data
 (def routing

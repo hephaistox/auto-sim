@@ -2,7 +2,7 @@
   "Middleware to render state."
   (:require
    [auto-sim.simulation-engine :as-alias sim-engine]
-   [clojure.string                            :as str]))
+   [clojure.string             :as str]))
 
 (defn wrap
   "Wrap the `handler` to  apply the rendering function `rendering-fn` to the state."

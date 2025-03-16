@@ -10,11 +10,9 @@
   Note:
    * All namespaced keywords of the rc bounded context are from this namespace, so rc users need only to refer this one."
   (:require
-   [auto-sim.rc.impl.preemption-policy.registry :as
-                                                               sim-de-rc-preemption-policy-registry]
+   [auto-sim.rc.impl.preemption-policy.registry :as sim-de-rc-preemption-policy-registry]
    [auto-sim.rc.impl.state                      :as sim-de-rc-state]
-   [auto-sim.rc.impl.unblocking-policy.registry :as
-                                                               sim-de-rc-unblocking-policy-registry]
+   [auto-sim.rc.impl.unblocking-policy.registry :as sim-de-rc-unblocking-policy-registry]
    [auto-sim.simulation-engine                  :as-alias sim-engine]
    [auto-sim.simulation-engine.event-return     :as sim-de-event-return]))
 

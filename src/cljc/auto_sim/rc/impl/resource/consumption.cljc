@@ -4,8 +4,8 @@
   A consumption has two steps, a consume and a free of the resource.
   The resource updates a `::sim-de-rc/currently-consuming` list events that are consuming resources"
   (:require
-   [automaton-core.utils.uuid-gen :as uuid-gen]
-   [auto-sim.rc    :as-alias sim-rc]))
+   [auto-sim.rc                   :as-alias sim-rc]
+   [automaton-core.utils.uuid-gen :as uuid-gen]))
 
 (defn consume
   "Consume `consumed-quantity` number of `resource`, store this consuming informations in the `currently-consuming` attribute of the resource.
@@ -24,7 +24,7 @@
                assoc
                consumption-uuid
                #:auto-sim.rc{:seizing-event seizing-event
-                                            :consumed-quantity consumed-quantity})])
+                             :consumed-quantity consumed-quantity})])
     [nil resource]))
 
 (defn free
