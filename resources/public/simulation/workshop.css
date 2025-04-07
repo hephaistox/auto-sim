@@ -1,0 +1,4 @@
+@keyframes example {
+    from {left: 10em; top: 0px;}
+    to   {left: 40em; top: 0px;}
+}
