@@ -26,5 +26,5 @@
              :main-opts ["-m" "cognitect.test-runner" "-r" ".*-test.*" "-d" "test/unit/cljc"]}
   :test-demo {:extra-paths ["test/demo/cljc"]
               :main-opts ["-m" "cognitect.test-runner" "-r" ".*" "-d" "test/demo/cljc"]}}
- :deps {com.github.hephaistox/auto-opti {:git/sha "5fd796b8d137c1cb9e5b5600e2f0b1a93187305c"}}
+ :deps {com.github.hephaistox/auto-opti {:git/sha "746ea7fd220610cb1f97d4fa2051a964094f94da"}}
  :paths ["src/cljc" "src/clj" "resources"]}
