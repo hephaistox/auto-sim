@@ -13,11 +13,11 @@
                         (run 'cljs-node-test))
                       auto-build.os.exit-codes/ok)
                   System/exit))}
-  clean {:doc "Clean temporary files"
-         :requires [[auto-build.tasks.clean :as task-clean]
-                    [auto-build.echo :refer [level1-header]]]
-         :task (-> (task-clean/clean level1-header "." [".DS_Store"] [".cpcache"] (current-task))
-                   exit)}
+  clean
+  {:doc "Clean temporary files"
+   :requires [[auto-build.tasks.clean :as task-clean] [auto-build.echo :refer [level1-header]]]
+   :task (-> (task-clean/clean level1-header "." [".DS_Store"] [".cpcache" "target"] (current-task))
+             exit)}
   clj-test {:doc "Test with clj"
             :requires [[auto-build.tasks.clj-test :as build-clj-test]
                        [auto-build.echo :refer [level1-header]]]

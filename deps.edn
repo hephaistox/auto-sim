@@ -8,8 +8,17 @@
                     :extra-deps {com.cognitect/test-runner
                                  {:git/url "https://github.com/cognitect-labs/test-runner"
                                   :sha "3f288f1f16d167723ad87cc35b1dfee3c1681e10"}}}
-  :cljs-deps {:extra-deps {thheller/shadow-cljs {:mvn/version "2.28.19"}}
-              :extra-paths ["src/cljc" "test/unit/cljc" "test/demo/cljc"]}
+  :cljs-deps {:extra-deps {com.github.hephaistox/auto_web {:local/root "../auto_web"}
+                           devcards/devcards {:mvn/version "0.2.7"}
+                           re-frame/re-frame {:mvn/version "1.4.3"}
+                           thheller/shadow-cljs {:mvn/version "2.28.23"}}
+              :extra-paths ["src/cljc"
+                            "src/cljs"
+                            "test/unit/cljc"
+                            "../auto_web/src/cljs"
+                            "../auto_web/src/cljs"
+                            "test/demo/cljc"
+                            "env/devcards/src/cljs"]}
   :codox {:exec-args
           {:description "`auto-sim` provide simulation features (activity and event based)"
            :doc-paths ["docs/codox"]
