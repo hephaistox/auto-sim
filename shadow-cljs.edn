@@ -8,8 +8,10 @@
              :test-dir "target/devcards"
              :runner-ns auto-sim.devcards ; must have init fn to run
              :devtools {:http-root "env/devcards/resources"
-                        :index-page "cards.html"}
+                        :index-page "cards.html"
+                        :preloads [re-frisk.preload]}
              :compiler-options {:devcards true
+                                :infer-externs true
                                 :output-feature-set :es8}
              :js-options {:resolve {"devcards-marked" {:require "marked"
                                                        :target :npm}
@@ -22,6 +24,6 @@
  :deps {:aliases [:cljs-deps]}
  :dev-http
  {3002
-  ["target/devcards" "resources/public" "env/devcards/resources" "../auto_web/resources/public"]
+  ["env/devcards/resources" "target/devcards" "resources/public" "../auto_web/resources/public"]
   8290 ["target/browser-test"]}
  :nrepl {:port 7002}}
