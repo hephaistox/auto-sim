@@ -9,6 +9,8 @@
                                  {:git/url "https://github.com/cognitect-labs/test-runner"
                                   :sha "3f288f1f16d167723ad87cc35b1dfee3c1681e10"}}}
   :cljs-deps {:extra-deps {binaryage/devtools {:mvn/version "1.0.6"}
+                           com.github.hephaistox/auto-web
+                           {:git/sha "1b74653034cf72b7c410bb0f027bdaea3ff063ef"}
                            com.github.hephaistox/auto_web {:local/root "../auto_web"}
                            devcards/devcards {:mvn/version "0.2.7"}
                            re-com/re-com {:mvn/version "2.24.2"}

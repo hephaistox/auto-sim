@@ -6,9 +6,16 @@
    [auto-sim.links             :refer [links]]
    [devcards.core              :refer [defcard-rg]]
    [devcards.util.edn-renderer :refer [html-edn]]
-   [re-frame.core              :refer [dispatch-sync]]
+   [re-frame.core              :refer [dispatch]]
    [re-frame.db                :refer [app-db]]
    [reagent.core               :as reagent]))
+
+(defn- focus-on
+  [m path]
+  (let [[a b] path]
+    (-> m
+        (select-keys [a])
+        (update a select-keys [b]))))
 
 (def sprites
   (->> {:source {:size-x 2
@@ -47,45 +54,41 @@
                (let [{:keys [size-x size-y img]} (get sprites sprite)]
                  [render-id {:render-id render-id
                              :img (:url (get links img))
-                             :src-basis {:width size-x
-                                         :height size-y
-                                         :x x
-                                         :y y}}])))
+                             :render-items-basis {:width size-x
+                                                  :height size-y
+                                                  :x x
+                                                  :y y}}])))
        (into {})))
 
-(dispatch-sync [::sut/set-render-items :canvas-1 rendering-data])
+(dispatch [::sut/set-render-items :canvas-1 rendering-data])
 
-(defcard-rg simulation-control-panel-multi-select
-            "### Simulation control panel with multi select mode"
-            (fn [_ _]
-              (-> [:div
-                   [:button {:on-click (fn [_]
-                                         (dispatch-sync
-                                          [::sut/set-render-items :canvas-1 rendering-data]))}
-                    "Set data"]
-                   [:div.w3-center [sut/control-bar :canvas-1]]
-                   [sut/layout {:style {:width "100%"
-                                        :height "500px"}}
-                    :canvas-1
-                    {:multi-select-mode? true}]
-                   (html-edn (-> @app-db
-                                 (select-keys [::sut/canvas])
-                                 (update ::sut/canvas #(select-keys % [:canvas-1]))))]
-                  reagent/as-element)))
+(defcard-rg
+ simulation-control-panel-multi-select
+ "### Simulation control panel with multi select mode"
+ (fn [_ _]
+   (-> [:div
+        [:div.w3-center
+         [:div.w3-bar.w3-padding-16 [sut/bn-autofit :canvas-1] [sut/bn-drag-move :canvas-1]]]
+        [sut/layout* {:style {:width "100%"
+                              :height "500px"}}
+         :canvas-1
+         {:multi-select-mode? true}]
+        (html-edn (focus-on @app-db [::sut/canvas :canvas-1]))]
+       reagent/as-element)))
 
-(dispatch-sync [::sut/set-render-items :canvas-2 rendering-data])
-
-(defcard-rg simulation-control-panel-mono-select
-            "### Simulation control panel with mono select mode"
-            (fn [_ _]
-              (-> [:div
-                   [:button {:on-click (fn [_]
-                                         (dispatch-sync
-                                          [::sut/set-render-items :canvas-2 rendering-data]))}
-                    "Set data"]
-                   [:div.w3-center [sut/control-bar :canvas-2]]
-                   [sut/layout {:style {:width "1000px"
-                                        :height "500px"}}
-                    :canvas-2
-                    {:multi-select-mode? false}]]
-                  reagent/as-element)))
+#_(defcard-rg
+   simulation-control-panel-mono-select
+   "### Simulation control panel with mono select mode"
+   (fn [_ _]
+     (-> [:div
+          [:button {:on-click (fn [_]
+                                (dispatch-sync [::sut/set-render-items :canvas-2 rendering-data]))}
+           "Set data"]
+          [:div.w3-center [:div.bar [sut/bn-autofit :canvas-1] [sut/bn-arrows :canvas-1]]]
+          [sut/layout {:style {:width "1000px"
+                               :height "500px"}}
+           :canvas-2
+           {:multi-select-mode? false}
+           rendering-data]
+          (html-edn (focus-on @app-db [::sut/canvas :canvas-2]))]
+         reagent/as-element)))

@@ -1,63 +1,99 @@
 (ns auto-sim.component.time-picker
-  "A time picker selects time in a predefined range.
+  "A time picker allows the user to manually select the time in a predefined range.
 
-  The maximum is a special case that can be discovered.
-  While it is not reached, the component is in a special mode remembering the last element met but not displaying the maximum but a space after the cursor to tell some further dates are possible."
+  The range could be:
+  - completly predefined with `min` and `max`.
+  - with a `max` to be discoverd when you advance in time. In that case `last`"
   (:require
-   [auto-opti.maths            :refer [ceil]]
-   [auto-sim                   :as-alias sim]
-   [auto-web.components.button :refer [clink-button]]
-   [cljs.math]))
+   [auto-opti.maths :refer [ceil]]
+   [auto-sim        :as-alias sim]))
 
 (def after-last "When the last element is not reached, this extends the range" 1.2)
 
-(defn clamp-time-picker
+(defn- clamp-time
   "Time picker is defaulted to minimum, clamped between min and max."
   [t min max]
   (cond-> (or t min)
     max (clojure.core/min max)
     min (clojure.core/max min)))
 
+(defn get-time
+  "Returns `t` time which is defaulted and clamped."
+  [{:keys [min max]
+    :as tp-data}
+   tp-vals]
+  (-> (or (:time tp-vals) (:time tp-data) min 0)
+      (clamp-time min max)))
+
 (defn update-time
-  "Update to new-time-fn, clamp the value if needed"
-  [{:keys [min max last time]
-    :as v}
-   new-time-fn]
-  (let [new-time (clamp-time-picker (new-time-fn time) min max)
-        v (assoc v :time new-time)]
-    (cond-> v
-      (nil? max) (assoc :last (clojure.core/max last 1 (ceil (* after-last new-time-fn)))))))
+  "Update `tp-vals` so time is set to new-time:
+  - The value is clamped if needed."
+  [tp-vals new-time]
+  (assoc tp-vals :time new-time))
 
 (defn time-picker
-  [opts tp time change-max-fn change-value-fn]
-  (let [opts* (if (map? opts) opts {})
-        tp* (if (map? opts) tp opts)
-        time* (if (map? opts) time tp)
-        change-max-fn* (if (map? opts) change-max-fn time)
-        change-value-fn* (if (map? opts) change-value-fn change-max-fn)
-        {:keys [fast-step step min last max]
-         :or {min 0
+  "A time picker is selecting one of date in a process between `min` and `max`.
+
+  Two modes exist:
+  - If `max` is non `nil`, the range is between `min` and `max`
+  - Otherwise, the range is between `min` and `max` augmented with `after-last`"
+  [opts tp-data tp-vals change-value-fn dynamic-max-fn]
+  (let [[opts* tp-data* tp-vals* change-value-fn* dynamic-max-fn*]
+        (if (fn? tp-vals)
+          [{} opts tp-data tp-vals change-value-fn dynamic-max-fn]
+          [opts tp-data tp-vals change-value-fn dynamic-max-fn])
+        {:keys [fast-step step min]
+         :or {fast-step 10
               step 1
-              fast-step 10}}
-        tp*]
-    (when-let [new-max (when (fn? change-max-fn*) (change-max-fn* max))] (change-max-fn* new-max))
+              min 0}}
+        tp-data*
+        max (:max tp-data*)
+        time (or (:time tp-vals*) (:time tp-data*) min 0)
+        max (if max
+              max
+              (when (fn? dynamic-max-fn*)
+                (when-let [new-max (dynamic-max-fn* tp-vals*)]
+                  (change-value-fn* new-max)
+                  new-max)))
+        time (clamp-time time min max)
+        max-not-defined (and (nil? max) (not (fn? dynamic-max-fn)))]
     [:div.w3-bar
      opts*
-     [clink-button {:class "fa fa-fast-backward w3-bar-item"
-                    :on-click #(change-value-fn* (- % fast-step))}]
-     [clink-button {:class "fa fa-step-backward w3-bar-item"
-                    :on-click #(change-value-fn* (- % step))}]
+     [:div.fa.fa-fast-backward.w3-bar-item {:class (if max-not-defined "w3-text-grey" "w3-button")
+                                            :on-click #(when (and (not max-not-defined)
+                                                                  (fn? change-value-fn*))
+                                                         (-> (- time fast-step)
+                                                             (clamp-time min max)
+                                                             change-value-fn*))}]
+     [:div.fa.fa-step-backward.w3-bar-item {:class (if max-not-defined "w3-text-grey" "w3-button")
+                                            :on-click #(when (and (not max-not-defined)
+                                                                  (fn? change-value-fn*))
+                                                         (-> (- time step)
+                                                             (clamp-time min max)
+                                                             change-value-fn*))}]
      [:div.w3-bar-item
       [:input {:type "range"
                :min min
-               :value (clink-button time* min max)
-               :max (or max last)
-               :style {:cursor "grab"}
-               :on-change #(change-value-fn* (-> %
-                                                 .-target
-                                                 .-value
-                                                 int))}]]
-     [clink-button {:class "fa fa-step-forward w3-bar-item"
-                    :on-click #(change-value-fn* (+ % step))}]
-     [clink-button {:class "fa fa-fast-forward w3-bar-item"
-                    :on-click #(change-value-fn* (+ % fast-step))}]]))
+               :disabled max-not-defined
+               :value time
+               :max (if max max (ceil (* after-last time)))
+               :style (when-not max-not-defined {:cursor "grab"})
+               :on-change #(when (and (not max-not-defined) (fn? change-value-fn*))
+                             (-> %
+                                 .-target
+                                 .-value
+                                 int
+                                 (clamp-time min max)
+                                 change-value-fn*))}]]
+     [:div.fa.fa-step-forward.w3-bar-item {:class (if max-not-defined "w3-text-grey" "w3-button")
+                                           :on-click #(when (and (not max-not-defined)
+                                                                 (fn? change-value-fn*))
+                                                        (-> (+ time step)
+                                                            (clamp-time min max)
+                                                            change-value-fn*))}]
+     [:div.fa.fa-fast-forward.w3-bar-item {:class (if max-not-defined "w3-text-grey" "w3-button")
+                                           :on-click #(when (and (not max-not-defined)
+                                                                 (fn? change-value-fn*))
+                                                        (-> (+ time fast-step)
+                                                            (clamp-time min max)
+                                                            change-value-fn*))}]]))

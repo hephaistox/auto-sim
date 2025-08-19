@@ -69,7 +69,7 @@
   repl {:doc "Clojure repl"
         :override-builtin true
         :requires [[auto-build.tasks.repl :as build-repl] [auto-build.echo :refer [level1-header]]]
-        :task (-> (build-repl/repl level1-header "." (current-task))
+        :task (-> (build-repl/repl level1-header "." (current-task) [:cljs-deps] 7008)
                   exit)}
   uberjar {:doc "Uberjar"
            :override-builtin true
