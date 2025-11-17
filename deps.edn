@@ -1,22 +1,18 @@
 {:aliases
- {:antq {:deps {com.github.liquidz/antq {:mvn/version "2.10.1241"}}
+ {:antq {:deps {com.github.liquidz/antq {:mvn/version "2.11.1276"}}
          :main-opts ["-m" "antq.core"]}
-  :build {:deps {io.github.clojure/tools.build {:git/sha "52cf7d6"
-                                                :git/tag "v0.10.6"}}
-          :extra-paths ["build"]}
   :clj-test-runner {:exec-fn cognitect.test-runner.api/test
                     :extra-deps {com.cognitect/test-runner
                                  {:git/url "https://github.com/cognitect-labs/test-runner"
                                   :sha "3f288f1f16d167723ad87cc35b1dfee3c1681e10"}}}
-  :cljs-deps {:extra-deps {binaryage/devtools {:mvn/version "1.0.6"}
+  :cljs-deps {:extra-deps {binaryage/devtools {:mvn/version "1.0.7"}
                            com.github.hephaistox/auto-web
-                           {:git/sha "1b74653034cf72b7c410bb0f027bdaea3ff063ef"}
+                           {:git/sha "e7446ec83262c36baecf3af11c7530b0d2e97eb8"}
                            com.github.hephaistox/auto_web {:local/root "../auto_web"}
                            devcards/devcards {:mvn/version "0.2.7"}
-                           re-com/re-com {:mvn/version "2.24.2"}
                            re-frame/re-frame {:mvn/version "1.4.3"}
-                           re-frisk/re-frisk {:mvn/version "1.6.0"}
-                           thheller/shadow-cljs {:mvn/version "2.28.23"}}
+                           re-frisk/re-frisk {:mvn/version "1.7.1"}
+                           thheller/shadow-cljs {:mvn/version "3.2.1"}}
               :extra-paths ["src/cljc"
                             "src/cljs"
                             "test/unit/cljc"
@@ -40,5 +36,5 @@
              :main-opts ["-m" "cognitect.test-runner" "-r" ".*-test.*" "-d" "test/unit/cljc"]}
   :test-demo {:extra-paths ["test/demo/cljc"]
               :main-opts ["-m" "cognitect.test-runner" "-r" ".*" "-d" "test/demo/cljc"]}}
- :deps {com.github.hephaistox/auto-opti {:git/sha "746ea7fd220610cb1f97d4fa2051a964094f94da"}}
+ :deps {com.github.hephaistox/auto-opti {:git/sha "fbcce94ddf956794c27c90387b2a9f975560eb25"}}
  :paths ["src/cljc" "src/clj" "resources"]}

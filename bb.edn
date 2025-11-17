@@ -1,8 +1,7 @@
-{:deps {com.github.hephaistox/auto-build {:git/sha "319337735ac9f23be4b4dabdc610b5b0095b5ed2"}}
+{:deps {com.github.hephaistox/auto-build {:git/sha "cd0854aaba46d240ac4852b97d1f4f708ed626dc"}}
  :paths []
  :tasks
- {:init (do (def exit System/exit))
-  :requires [[auto-build.os.exit-codes]]
+ {:requires [[auto-build.os.exit-codes] [auto-build.os.exiting :refer [exit]]]
   bp {:doc "Before push"
       :task (binding [exit (fn [exit-code & _] (when-not (zero? exit-code) exit-code))]
               (-> (or (run 'format)
@@ -13,11 +12,15 @@
                         (run 'cljs-node-test))
                       auto-build.os.exit-codes/ok)
                   System/exit))}
-  clean
-  {:doc "Clean temporary files"
-   :requires [[auto-build.tasks.clean :as task-clean] [auto-build.echo :refer [level1-header]]]
-   :task (-> (task-clean/clean level1-header "." [".DS_Store"] [".cpcache" "target"] (current-task))
-             exit)}
+  clean {:doc "Clean temporary files"
+         :requires [[auto-build.tasks.clean :as task-clean]
+                    [auto-build.echo :refer [level1-header]]]
+         :task (-> (task-clean/clean level1-header
+                                     "."
+                                     [".DS_Store"]
+                                     ["node_modules" ".cpcache" "target"]
+                                     (current-task))
+                   exit)}
   clj-test {:doc "Test with clj"
             :requires [[auto-build.tasks.clj-test :as build-clj-test]
                        [auto-build.echo :refer [level1-header]]]
@@ -40,6 +43,9 @@
               [auto-build.echo :refer [level1-header]]]
    :task (-> (build-cljs-node-test/cljs-node-test level1-header "." (current-task) ["ltest"])
              exit)}
+  copy {:doc "Copy files from source projects (as defined in ext_src.edn)"
+        :requires [[auto-build.tasks.copy :as tc] [auto-build.echo :refer [level1-header]]]
+        :task (tc/run level1-header "ext_src.edn")}
   deploy {:doc "Deploy"
           :requires [[auto-build.tasks.deploy :as task-deploy]
                      [auto-build.echo :refer [level1-header]]]
@@ -56,6 +62,8 @@
                      [auto-build.echo :refer [level1-header]]]
           :task (-> (task-format/format level1-header "." (current-task))
                     exit)}
+  gha {:doc "For github action tests"
+       :task (do (shell "bb clj-test test-clj -v") (shell "bb cljs-node-test all -v"))}
   heph-info {:doc "Hephaistox project info"
              :extra-paths ["env/dev/resources"]
              :requires [[auto-build.tasks.heph-info :as heph-info]
@@ -70,10 +78,4 @@
         :override-builtin true
         :requires [[auto-build.tasks.repl :as build-repl] [auto-build.echo :refer [level1-header]]]
         :task (-> (build-repl/repl level1-header "." (current-task) [:cljs-deps] 7008)
-                  exit)}
-  uberjar {:doc "Uberjar"
-           :override-builtin true
-           :requires [[auto-build.tasks.uberjar :as build-uberjar]
-                      [auto-build.echo :refer [level1-header]]]
-           :task (-> (build-uberjar/uberjar level1-header "." "target/uberjar" "")
-                     exit)}}}
+                  exit)}}}
