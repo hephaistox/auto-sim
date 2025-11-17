@@ -1,4 +1,7 @@
-(ns auto-sim.rc.preemption-policy
-  "When the capacity is updated (through a failure or a capacity update), the `preemption-policy` is deciding which `consumption` should be stopped.")
+(ns auto-sim.rc.preemption-policy "Basic preemption policies.")
 
-(defn schema "Schema of a preemption policy." [] fn?)
+(defn no-preemption
+  "Do nothing when a preemption occurs. In other words ,the failure or capacity decreases will have no effect before the next event on that resource."
+  [resource]
+  {:preempts []
+   :resource resource})

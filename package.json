@@ -4,12 +4,20 @@
   "license": "MIT",
   "scripts": {},
   "private": true,
-  "description": "Core functions for Hephaistox project",
+  "description": "Simulation functions for Hephaistox project",
   "version": "0.0.1",
   "author": "Hephaistox <info@hephaistox.com>",
   "workspaces": [],
   "devDependencies": {
+    "highlight.js": "^10.6.0",
+    "marked": "^2.0.1",
+    "react-highlight.js": "^1.0.7",
     "shadow-cljs": "^2.28.20",
     "source-map-support": "^0.5.21"
+  },
+  "dependencies": {
+    "create-react-class": "15.6.3",
+    "react": "16.13.1",
+    "react-dom": "16.13.1"
   }
 }

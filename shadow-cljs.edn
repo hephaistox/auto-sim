@@ -1,11 +1,29 @@
-{:builds {:browser-test {:ns-regexp "-test$"
-                         :runner-ns shadow.test.browser
-                         :target :browser-test
-                         :test-dir "tmp/browser-test"}
-          :ltest {:autorun true
-                  :ns-regexp "-test$"
-                  :output-to "tmp/ltest.js"
-                  :target :node-test}}
+{:builds
+ {:browser-test {:ns-regexp "-test$"
+                 :runner-ns shadow.test.browser
+                 :target :browser-test
+                 :test-dir "target/browser-test"}
+  :devcards {:target :browser-test
+             :ns-regexp "-cards$"
+             :test-dir "target/devcards"
+             :runner-ns auto-sim.devcards ; must have init fn to run
+             :devtools {:http-root "env/devcards/resources"
+                        :index-page "cards.html"
+                        :preloads [re-frisk.preload]}
+             :compiler-options {:devcards true
+                                :infer-externs true
+                                :output-feature-set :es8}
+             :js-options {:resolve {"devcards-marked" {:require "marked"
+                                                       :target :npm}
+                                    "devcards-syntax-highlighter" {:require "highlight.js"
+                                                                   :target :npm}}}}
+  :ltest {:autorun true
+          :ns-regexp "-test$"
+          :output-to "target/ltest.js"
+          :target :node-test}}
  :deps {:aliases [:cljs-deps]}
- :dev-http {8290 ["tmp/browser-test"]}
+ :dev-http
+ {3002
+  ["env/devcards/resources" "target/devcards" "resources/public" "../auto_web/resources/public"]
+  8290 ["target/browser-test"]}
  :nrepl {:port 7002}}

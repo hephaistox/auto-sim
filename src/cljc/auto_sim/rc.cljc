@@ -1,111 +1,124 @@
 (ns auto-sim.rc
-  "Models resource consumers interaction.
+  "Models the resource consumers interaction.
 
-  Resource definition:
-  * A limited quantity of items that are used (e.g. seized and disposed) by entities as they proceed through the system. A resource has a capacity that governs the total quantity of items that may be available. All the items in the resource are homogeneous, meaning that they are indistinguishable. If an entity attempts to seize a resource that does not have any units available it must wait in a queue. It is often representing real world items that availability is limited (e.g. machine, wrench).
+  Definitions:
+  * Resource definition: A limited quantity of items that are seized and disposed by entities as they proceed through the system. A resource has a capacity that governs the total quantity of items that may be available. All the items in the resource are homogeneous, meaning that they are indistinguishable. If an entity attempts to seize a resource that does not have any units available it must wait in a queue. It is often representing real world items that availability is limited (e.g. machine, wrench).
+  * Consumer definition: A consumer is responsible for seizing and disposing the resource.
 
-  Consumer definition:
-  * A consumer is responsible for seizing and disposing the resource.
-
-  Note:
-   * All namespaced keywords of the rc bounded context are from this namespace, so rc users need only to refer this one."
+  A resource defines:
+  * `capacity` (default 1) total number of available resources, note that this number may evolve over time.
+  * `consumption` (default []) list of events currently consumption this resource, is useful to track them and enabling preemption and failures. The postponable-event contains the information on the waiting entity.
+  * `queue` (default []) list of blocked entities.
+  * `renewable?` (default true) when true, the disposing is not giving back the values."
   (:require
-   [auto-sim.rc.impl.preemption-policy.registry :as
-                                                               sim-de-rc-preemption-policy-registry]
-   [auto-sim.rc.impl.state                      :as sim-de-rc-state]
-   [auto-sim.rc.impl.unblocking-policy.registry :as
-                                                               sim-de-rc-unblocking-policy-registry]
-   [auto-sim.simulation-engine                  :as-alias sim-engine]
-   [auto-sim.simulation-engine.event-return     :as sim-de-event-return]))
+   [auto-sim.engine      :as-alias sim-engine]
+   [auto-sim.entity      :as sim-entity]
+   [auto-sim.rc.resource :as sim-rc-resource]))
+
+(defn nb-consumed-resources
+  "Returned how much resources `resource-name` are currently consumed"
+  [model _event _bucket resource-name]
+  (let [resource (get-in model [::sim-engine/state ::sim-engine/resource resource-name])]
+    (sim-rc-resource/nb-consumed-resources resource)))
+
+(defn nb-available-resources
+  "Returned how much resources `resource-name` are available"
+  [model _event _bucket resource-name]
+  (let [resource (get-in model [::sim-engine/state ::sim-engine/resource resource-name])]
+    (sim-rc-resource/nb-available-resources resource)))
+
+(defn define-resource
+  "Update `state` to define `resource-name` with `resource`.
+
+  Note that `resource` is defaulted if necessary."
+  [model _event _bucket resource-name resource]
+  (update model
+          ::sim-engine/state
+          assoc-in
+          [::sim-engine/resource resource-name]
+          (sim-rc-resource/defaulting-values resource)))
 
 (defn seize
-  "Seize a resource,
+  "The `postponable-event` is executed when the resource called `resource-name` has `quantity` items available.
 
-  Depending on the capacity found in the state for that `resource-name`,
-  * If capacity is not defined for that resource, the whole consumption is skipped, including the `postponed-event` execution.
-  * If some resource are available, the `postponed-event` is executed now, (i.e. added at the current date in the scheduler)
-  * Otherwise block that consumer and store it in the queue
-     * Blocked consumer: A blocked consumer is a consumer waiting for a resource being available.
-     * Queue: Stores blocked consumers.
+  There are two cases:
+  * If resources are lacking, the consumption is postponed, and the `postponable-event` stored in the `queue` of the `resource`. It may be triggered latter on, when freeing or capacity updating.
+  * If resources are sufficient, a consumption is added in the `resource`, the `postponable-event` is planned to be executed now by adding it in the `future-events`.
 
-  Returns an event-return."
-  [{::sim-engine/keys [state]
-    :as event-return}
-   resource-name
-   consumed-quantity
-   seizing-date
-   postponed-event]
-  (let [[consumption-uuid state] (sim-de-rc-state/seize
-                                  state
-                                  resource-name
-                                  consumed-quantity
-                                  (when postponed-event
-                                    (assoc postponed-event ::sim-engine/date seizing-date)))]
-    (cond-> event-return
-      consumption-uuid (sim-de-event-return/add-event
-                        (assoc-in postponed-event [::resource resource-name] consumption-uuid)
-                        seizing-date)
-      (some? state) (assoc ::sim-engine/state state))))
+  The `priority` defines.
+
+  Returns a map:
+  * `state`
+  * `future-events`"
+  [model event bucket resource-name quantity postponable-event priority]
+  (if-let [resource (get-in model [::sim-engine/state ::sim-engine/resource resource-name])]
+    (let [{:keys [consumption-uuid resource errors]}
+          (sim-rc-resource/seize resource event quantity priority postponable-event)]
+      (cond-> (-> model
+                  (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource))
+        consumption-uuid (sim-entity/schedule event bucket postponable-event)
+        (seq errors) (update ::sim-engine/errors #(reduce (fnil conj []) % errors))))
+    ;;NOTE seizing is noop
+    (update model
+            ::sim-engine/errors
+            (fnil conj [])
+            #::sim-engine{:why :resource-not-found
+                          :resource-name resource-name
+                          :quantity quantity
+                          :possible-resources (-> model
+                                                  ::sim-engine/state
+                                                  ::sim-engine/resource
+                                                  keys
+                                                  vec)})))
+
+(defn schedule-now
+  [model events bucket]
+  (-> model
+      (update ::sim-engine/future-events
+              concat
+              (mapv #(-> %
+                         ::sim-engine/event
+                         (assoc ::sim-engine/bucket bucket))
+                    events))))
 
 (defn dispose
-  "Returns the `event-return` with the resource disposed, so it is available again.
+  "Dispose a resource called `resource-name` for entity of `postponable-event`.
 
-  A consumer is unblocked, the capacity of `resource-name` is freed."
-  [event-return
-   resource-name
-   {::keys [resource]
-    ::sim-engine/keys [date]
-    :as _current-event}]
-  (let [{::sim-engine/keys [state]} event-return
-        [unblockings state]
-        (sim-de-rc-state/dispose state resource-name (get resource resource-name))]
-    (reduce (fn [event-return
-                 {::keys [consumed-quantity seizing-event]
-                  :as _blocking}]
-              (seize event-return resource-name consumed-quantity date seizing-event))
-            (assoc event-return ::sim-engine/state state)
-            unblockings)))
+  The new available resources can be used by some other entities. `unqueueing-policy-fn` is used to select events to unqueue.
 
-(defn resource-update
+  Returns a pair:
+  * `state`
+  * `future-events`"
+  [model _event bucket resource-name quantity unqueueing-policy-fn priority-comp]
+  (if-let [resource (get-in model [::sim-engine/state ::sim-engine/resource resource-name])]
+    (let [{:keys [events resource errors]}
+          (sim-rc-resource/dispose resource priority-comp unqueueing-policy-fn quantity)]
+      (cond-> model
+        resource (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource)
+        (seq events) (schedule-now events bucket)
+        ;;TODO This adding miss the bucket starting date should be replaced with a function. Where to define this function. Start here and think where to move it?
+        (seq errors) (update ::sim-engine/errors #(reduce (fnil conj []) % errors))))
+    (update model
+            ::sim-engine/errors
+            (fnil conj [])
+            #::sim-engine{:why :resource-not-found
+                          :resource-name resource-name
+                          :quantity quantity})))
+
+(defn update-capacity
   "Update the resource capacity."
-  [{::sim-engine/keys [state]
-    :as event-return}
-   resource-name
-   new-capacity]
-  (let [[unblocked-events state]
-        (sim-de-rc-state/update-resource-capacity state resource-name new-capacity)]
-    (-> event-return
-        (assoc ::sim-engine/state state)
-        (sim-de-event-return/add-events unblocked-events))))
-
-(defn unblocking-policy-registry
-  "Returns the default registry for event `unblocking-policy`.
-  Note that you can enrich it with your own policies."
-  []
-  (sim-de-rc-unblocking-policy-registry/registry))
-
-(defn preemption-policy-registry
-  "Returns the default registry for event `preemption-policy`.
-  Note that you can enrich it with your own policies."
-  []
-  (sim-de-rc-preemption-policy-registry/registry))
-
-(defn wrap-model
-  "Wraps a model to add necessary behavior to model a resource/consumer.
-
-  Resource/Consumer modeling is a way to model state and events for simulation, by using concepts of resource being used by consumer
-
-  The `resources` is a map defining the resource available:
-      * `policy` In a queue, the policy selects the next consumer that will be unblocked. (Each queue has its own policy)
-      * `renewable?` When disposed, a renewable resource model is available again. Typically the toolings like wrenches, hammers, machines are most often renewable resources."
-  [{{::keys [rc]} ::sim-engine/model-data
-    :as model}
-   unblocking-policy-registry
-   preemption-policy-registry]
-  (cond-> model
-    (seq rc) (update-in [::sim-engine/initial-snapshot ::sim-engine/state]
-                        (fn [state]
-                          (sim-de-rc-state/define-resources state
-                                                            rc
-                                                            unblocking-policy-registry
-                                                            preemption-policy-registry)))))
+  [model event bucket resource-name new-capacity preemption-policy-fn unqueueing-policy-fn]
+  (if-let [resource (get-in model [::sim-engine/state ::sim-engine/resource resource-name])]
+    (let [{:keys [events _preempt resource]} (sim-rc-resource/update-capacity resource
+                                                                              preemption-policy-fn
+                                                                              unqueueing-policy-fn
+                                                                              new-capacity)]
+      (cond-> model
+        resource (assoc-in [::sim-engine/state ::sim-engine/resource resource-name] resource)
+        events (sim-entity/schedule-events event bucket events)))
+    (update model
+            ::sim-engine/errors
+            (fnil conj [])
+            #::sim-engine{:why :resource-not-found
+                          :resource-name resource-name
+                          :new-capacity new-capacity})))
